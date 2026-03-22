@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ウッドベリーズ ラベル印刷</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --blue: #2563eb;
+  --blue-light: #eff6ff;
+  --green: #16a34a;
+  --green-hover: #15803d;
+  --warm-bg: #faf9f6;
+  --warm-white: #fffdf9;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-900: #111827;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.05);
+  --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05);
+}
+
+body {
+  font-family: "Yu Gothic", "YuGothic", "Hiragino Kaku Gothic Pro", "Meiryo", sans-serif;
+  background: var(--warm-bg);
+  color: var(--gray-900);
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+#app-header {
+  background: #fff;
+  border-bottom: 1px solid var(--gray-200);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+#app-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gray-900);
+  white-space: nowrap;
+}
+#search-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 320px;
+  margin-left: auto;
+}
+#search-box {
+  width: 100%;
+  padding: 7px 32px 7px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  background: var(--gray-50);
+}
+#search-box:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+  background: #fff;
+}
+#search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--gray-400);
+  display: none;
+  padding: 2px 6px;
+  line-height: 1;
+}
+#search-clear:hover { color: var(--gray-700); }
+#btn-new-label {
+  padding: 7px 16px;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s;
+}
+#btn-new-label:hover { background: #1d4ed8; }
+
+/* ── Category Tabs ── */
+#tab-bar {
+  background: #fff;
+  border-bottom: 1px solid var(--gray-200);
+  padding: 8px 24px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+#tab-bar::-webkit-scrollbar { display: none; }
+.tab-pill {
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  border: 1.5px solid var(--gray-300);
+  background: #fff;
+  color: var(--gray-600);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  user-select: none;
+}
+.tab-pill:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.tab-pill.active {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+.tab-pill.active-warm {
+  background: #f97316;
+  border-color: #f97316;
+  color: #fff;
+}
+.tab-badge {
+  font-size: 11px;
+  background: rgba(0,0,0,.08);
+  border-radius: 10px;
+  padding: 0 6px;
+  line-height: 18px;
+  min-width: 18px;
+  text-align: center;
+}
+.tab-pill.active .tab-badge,
+.tab-pill.active-warm .tab-badge {
+  background: rgba(255,255,255,.25);
+}
+
+/* ── Main Grid Area ── */
+#main-area {
+  padding: 20px 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+#grid-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+#grid-header h2 { font-size: 16px; font-weight: 600; color: var(--gray-700); }
+#label-count { font-size: 13px; color: var(--gray-500); }
+
+#label-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+#no-results {
+  display: none;
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--gray-500);
+  font-size: 14px;
+  width: 100%;
+}
+
+/* ── Label Buttons ── */
+.label-btn {
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  padding: 10px 8px;
+  user-select: none;
+  position: relative;
+}
+.label-btn:hover {
+  transform: scale(1.03);
+  box-shadow: var(--shadow-md);
+}
+.label-btn:active {
+  transform: scale(0.98);
+}
+.label-btn-small {
+  min-width: 120px;
+  max-width: 180px;
+  height: 80px;
+  flex: 1 0 120px;
+}
+.label-btn-large {
+  min-width: 160px;
+  max-width: 220px;
+  height: 100px;
+  flex: 1 0 160px;
+}
+.label-btn .btn-main-text {
+  font-size: 13px;
+  line-height: 1.3;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  word-break: break-all;
+}
+.label-btn .btn-sub-text {
+  font-size: 10px;
+  opacity: .65;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ── Context Menu ── */
+#context-menu {
+  display: none;
+  position: fixed;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  padding: 4px 0;
+  min-width: 140px;
+}
+#context-menu .ctx-item {
+  padding: 8px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--gray-700);
+}
+#context-menu .ctx-item:hover {
+  background: var(--gray-100);
+}
+#context-menu .ctx-item.danger { color: #dc2626; }
+#context-menu .ctx-item.danger:hover { background: #fef2f2; }
+
+/* ── Modals ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* ── Print Preview Modal ── */
+#print-modal .modal-box { width: 540px; }
+#print-modal h3 { font-size: 17px; margin-bottom: 16px; font-weight: 600; }
+#print-preview-area {
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  margin-bottom: 16px;
+  background: var(--gray-50);
+}
+#print-preview-area .preview-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.4;
+  padding: 6px;
+}
+.print-note {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #92400e;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+.form-row label {
+  width: 100px;
+  flex-shrink: 0;
+  color: var(--gray-600);
+  font-size: 13px;
+}
+.form-row select,
+.form-row input[type=number] {
+  padding: 6px 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+}
+.form-row select:focus,
+.form-row input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(37,99,235,.1);
+}
+.form-row .hint { font-size: 11px; color: var(--gray-500); }
+
+#text-select-area {
+  margin-bottom: 14px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+#text-select-area .ts-heading {
+  font-size: 13px;
+  color: var(--gray-700);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+#text-select-area .ts-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--gray-700);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+#text-select-area .ts-item:last-child { border-bottom: none; }
+#text-select-area input[type=number] {
+  -moz-appearance: textfield;
+}
+#text-select-area input[type=number]::-webkit-inner-spin-button { opacity: 1; }
+.pm-edit-text-btn:hover { background: var(--gray-100) !important; }
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gray-200);
+}
+.btn {
+  padding: 9px 22px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+}
+.btn-print {
+  background: var(--green);
+  color: #fff;
+  font-size: 15px;
+  padding: 10px 32px;
+}
+.btn-print:hover { background: var(--green-hover); }
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-secondary { background: var(--gray-100); color: var(--gray-700); }
+.btn-secondary:hover { background: var(--gray-200); }
+.btn-danger { background: #dc2626; color: #fff; }
+.btn-danger:hover { background: #b91c1c; }
+
+/* ── New/Edit Label Modal ── */
+#edit-modal .modal-box { width: 560px; }
+#edit-modal h3 { font-size: 17px; margin-bottom: 20px; font-weight: 600; }
+.edit-field {
+  margin-bottom: 14px;
+}
+.edit-field label {
+  display: block;
+  font-size: 13px;
+  color: var(--gray-600);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.edit-field .optional-tag {
+  font-size: 11px;
+  color: var(--gray-400);
+  font-weight: 400;
+  margin-left: 4px;
+}
+.edit-field input[type=text],
+.edit-field select {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+}
+.edit-field input[type=text]:focus,
+.edit-field select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(37,99,235,.1);
+}
+.edit-field .radio-group {
+  display: flex;
+  gap: 16px;
+  padding-top: 4px;
+}
+.edit-field .radio-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--gray-700);
+  cursor: pointer;
+}
+#edit-preview-area {
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  margin-bottom: 14px;
+  background: var(--gray-50);
+}
+.color-swatches {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color .15s, transform .1s;
+}
+.color-swatch:hover { transform: scale(1.1); }
+.color-swatch.selected { border-color: var(--gray-900); box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--gray-400); }
+.color-custom-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+.color-custom-wrap input[type=color] {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--gray-300);
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+}
+.edit-field .checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--gray-700);
+  cursor: pointer;
+}
+
+/* ── Print Sheet ── */
+@page { size: A4; margin: 0; }
+
+#print-area { display: none; }
+
+@media print {
+  body * { visibility: hidden !important; }
+  #print-area, #print-area * { visibility: visible !important; }
+  #print-area {
+    display: block !important;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 210mm;
+    height: 297mm;
+  }
+  #app-header, #tab-bar, #main-area, .modal-overlay, #context-menu { display: none !important; }
+}
+
+.sheet-label {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  line-height: 1.25;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ Header ═══ -->
+<div id="app-header">
+  <h1>ウッドベリーズ ラベル印刷</h1>
+  <div id="search-wrap">
+    <input type="text" id="search-box" placeholder="ラベルを検索...">
+    <button id="search-clear" type="button">×</button>
+  </div>
+  <button id="btn-new-label">＋ 新規作成</button>
+</div>
+
+<!-- ═══ Category Tabs ═══ -->
+<div id="tab-bar"></div>
+
+<!-- ═══ Main Grid ═══ -->
+<div id="main-area">
+  <div id="grid-header">
+    <h2 id="current-cat-name">人気・定番</h2>
+    <span id="label-count"></span>
+  </div>
+  <div id="label-grid"></div>
+  <div id="no-results">検索結果が見つかりませんでした</div>
+</div>
+
+<!-- ═══ Print Preview Modal ═══ -->
+<div class="modal-overlay" id="print-modal">
+  <div class="modal-box">
+    <h3 id="pm-title"></h3>
+    <div id="print-preview-area"></div>
+    <div class="print-note">
+      印刷時、ブラウザの余白設定を「なし (None)」に設定してください。<br>
+      倍率は「100%」のままにしてください。
+    </div>
+    <div id="text-select-area"></div>
+    <div class="form-row">
+      <label>用紙タイプ:</label>
+      <select id="pm-paper">
+        <option value="small">95面 小ラベル (63295)</option>
+        <option value="large">12面 大ラベル (28916)</option>
+      </select>
+    </div>
+    <div id="single-count-row" class="form-row">
+      <label>印刷枚数:</label>
+      <input type="number" id="pm-count" min="1" value="95">
+      <span class="hint" id="pm-count-hint"></span>
+    </div>
+    <div id="pm-total-info" style="display:none;font-size:13px;color:var(--gray-600);margin-bottom:12px;padding:8px 12px;background:var(--gray-50);border-radius:6px">
+      合計: <strong id="pm-total-num">0</strong> 枚 / <span id="pm-total-max">95</span> 枚（残りは空欄）
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="pm-close">閉じる</button>
+      <button class="btn btn-print" id="pm-print">印刷する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ New/Edit Label Modal ═══ -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal-box">
+    <h3 id="em-title">新しいシールを作成</h3>
+    <div class="edit-field">
+      <label>用紙</label>
+      <div class="radio-group">
+        <label><input type="radio" name="em-paper" value="small" checked> 95面 小ラベル</label>
+        <label><input type="radio" name="em-paper" value="large"> 12面 大ラベル</label>
+      </div>
+    </div>
+    <div class="edit-field">
+      <label>果物名 / ラベル名</label>
+      <input type="text" id="em-fruit" placeholder="例: バナナ">
+    </div>
+    <div class="edit-field">
+      <label>農園名<span class="optional-tag">(任意)</span></label>
+      <input type="text" id="em-farm" placeholder="例: やまさ農園">
+    </div>
+    <div class="edit-field">
+      <label>地域<span class="optional-tag">(任意)</span></label>
+      <input type="text" id="em-region" placeholder="例: 長野">
+    </div>
+    <div class="edit-field">
+      <label>画像<span class="optional-tag">(任意)</span></label>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button type="button" class="btn btn-secondary" id="em-img-btn" style="font-size:13px;padding:5px 12px">画像を選択</button>
+        <input type="file" id="em-img-file" accept="image/*" style="display:none">
+        <span id="em-img-name" style="font-size:12px;color:#6b7280"></span>
+        <button type="button" id="em-img-clear" style="display:none;font-size:12px;color:#dc2626;background:none;border:none;cursor:pointer">削除</button>
+      </div>
+      <div id="em-img-preview" style="margin-top:8px;display:none">
+        <img id="em-img-thumb" style="max-width:200px;max-height:100px;border:1px solid #e5e7eb;border-radius:4px">
+      </div>
+    </div>
+    <div class="edit-field">
+      <label>表示テキスト プレビュー</label>
+      <div id="edit-preview-area">
+        <div id="edit-preview-label"></div>
+      </div>
+    </div>
+    <div class="edit-field">
+      <label>文字色</label>
+      <div class="color-swatches" id="em-colors"></div>
+    </div>
+    <div class="edit-field">
+      <label class="checkbox-label">
+        <input type="checkbox" id="em-border" checked>
+        枠線あり
+      </label>
+    </div>
+    <div class="edit-field">
+      <label>カテゴリ</label>
+      <select id="em-category"></select>
+    </div>
+    <div class="modal-actions" id="em-actions">
+      <button class="btn btn-secondary" id="em-cancel">キャンセル</button>
+      <button class="btn btn-primary" id="em-save">登録する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Context Menu ═══ -->
+<div id="context-menu">
+  <div class="ctx-item" id="ctx-edit">編集</div>
+  <div class="ctx-item danger" id="ctx-delete" style="display:none">削除</div>
+</div>
+
+<!-- ═══ Print Area ═══ -->
+<div id="print-area"></div>
+
+<script>
+// ━━━━━━━━━━ DATA ━━━━━━━━━━
+const LABELS=[
+  {path:"point card/ポイントカード1",code:"28916",texts:[],font:"コーポレートやわ明 Medium",size:11.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"point card/ポイントカード3",code:"28916",texts:[],font:"コーポレートやわ明 Medium",size:11.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"point card/ポイントカード4",code:"28916",texts:[],font:"コーポレートやわ明 Medium",size:11.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"point card/ポイントカード5",code:"28916",texts:[],font:"コーポレートやわ明 Medium",size:11.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"point card/ポイントカード6",code:"28916",texts:[],font:"コーポレートやわ明 Medium",size:11.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"point card/ポイントカード２",code:"28916",texts:[],font:"コーポレートやわ明 Medium",size:11.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"ウッドベリーズ住所",code:"28916",texts:["〒180-0003","ウッドベリーズ","東京都武蔵野市吉祥寺南町1-4-1\n井の頭ビル１階"],font:"コーポレートやわ明 Medium",size:14.26,color:0,border:false,borderColor:0,bold:false},
+  {path:"サンド用　ロゴシール",code:"63295",texts:["ウッドベリーズ\nフルーツ\nヨーグルトサンド"],font:"コーポレートやわ明 Medium",size:6.4,color:0,border:true,borderColor:0,bold:false},
+  {path:"ジャム/やまね園　ジャム　大",code:"63295",texts:["ウルトララズベリー\n1400 yen","ブラックベリー\n850 yen","ポポー\n900 yen","山桃\n1300 yen","白いちじく＆赤ワイン\n1100 yen","白いちじく（バナーネ）\n850 yen"],font:"コーポレートやわ明 Medium",size:9.9,color:0,border:true,borderColor:0,bold:false},
+  {path:"ジャム/やまね園　ジャム　大2",code:"63295",texts:["いちじく\n（ブリジャソットグリーズ）\n1150 yen","ウルトララズベリー\n1600 yen","フェイジョア\n850 yen","ブラックベリー\n1400 yen","ポポー\n1100 yen","ミニキウイ(サルナシ）\n850 yen","山桃\n1500 yen","白いちじく＆赤ワイン\n1200 yen","白いちじく（バナーネ）\n1100 yen","黒いちじく\n（ビオレソリエス）\n1450 yen"],font:"コーポレートやわ明 Medium",size:7.2,color:0,border:true,borderColor:0,bold:false},
+  {path:"ドライアイス注意",code:"28916",texts:["ドライアイスが\n直接入って\nいますので\nご注意ください"],font:"コーポレートやわ明 Medium",size:17.76,color:0,border:false,borderColor:0,bold:false},
+  {path:"ハーフバット用　注意",code:"62312",texts:["切り分けの際は\n冷凍庫から出し、少し置いた後に\n透明のフィルムの両端を持って\n引っ張り上げ全体を\n取り出して下さい。"],font:"コーポレートやわ明 Medium",size:10.5,color:0,border:false,borderColor:0,bold:false},
+  {path:"季節もの/いちごづくし",code:"73200",texts:["Wいちご","いちご ラズベリー\nブルーベリー","いちご\nマスカルポーネ","いちごカシス","いちごバナナ","いちご生姜","こたつファーム\n津の輝（柑橘)"],font:"コーポレートやわ明 Medium",size:6.1,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/kenchan farmブルーベリー",code:"63295",texts:["武蔵野市\nKenchanFarm\nブルーベリー"],font:"コーポレートやわ明 Medium",size:8.83,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/Wチェリー＆チーズ",code:"63295",texts:["Wチェリー\n＆チーズ"],font:"コーポレートやわ明 Medium",size:14.8,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/いちごづくし",code:"63295",texts:[" Wいちご","いちご　ブルーベリー\nラズベリー","いちごと\nマスカルポーネ","いちごとカシス","いちごとバナナ","いちごと生姜"],font:"コーポレートやわ明 Medium",size:11.63,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/いちごココナッツ",code:"63295",texts:["いちごココナッツ"],font:"コーポレートやわ明 Medium",size:11.79,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/いちじく　バナーネ　やまね園",code:"63295",texts:["東京小平 やまね園\nバナーネ（白いちじく）"],font:"コーポレートやわ明 Medium",size:9.2,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/かぼちゃ 明井農園",code:"63295",texts:["北海道　明井農園\n有機かぼちゃ"],font:"コーポレートやわ明 Medium",size:9.4,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/さくら",code:"63295",texts:["徳島県 神山\nさくら"],font:"コーポレートやわ明 Medium",size:11.23,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/さくら3種セット",code:"63295",texts:["さくら","さくらグリーンティー","さくらチーズケーキ","さくらマロン"],font:"コーポレートやわ明 Medium",size:23,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/さくらんぼ　佐藤錦　こんた農園",code:"63295",texts:["山形 こんた農園\n佐藤錦（さくらんぼ）"],font:"コーポレートやわ明 Medium",size:8.93,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/さくらんぼ　紅秀峰　こんた農園",code:"63295",texts:["山形 こんた農園\n紅秀峰（さくらんぼ）"],font:"コーポレートやわ明 Medium",size:8.93,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/さくらフェア",code:"63295",texts:["\nさくらあんこ","\nさくらいちご","\nさくらハニー\nラズベリー","\nさくらポーネ","\n徳島 神山\nさくら"],font:"コーポレートやわ明 Medium",size:10.6,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/さつまいも",code:"63295",texts:["山形県酒田市\nさつまいも村\nさつまいも（紅はるか）"],font:"コーポレートやわ明 Medium",size:7.83,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/すいか　大井農園",code:"63295",texts:["神奈川 大井農園\nすいか"],font:"コーポレートやわ明 Medium",size:9.36,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/はちみつラズベリー",code:"63295",texts:["はちみつラズベリー"],font:"コーポレートやわ明 Medium",size:10.4,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/BKシードレス　小野農園",code:"63295",texts:["山梨　小野農園\nBKシードレス（ぶどう）"],font:"コーポレートやわ明 Medium",size:8.43,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/クインニーナ",code:"63295",texts:["長野　中村農園\nクインニーナ（葡萄）"],font:"コーポレートやわ明 Medium",size:9.56,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/クインニーナ　中村農園",code:"63295",texts:["長野　中村農園\nクインニーナ（ぶどう）"],font:"コーポレートやわ明 Medium",size:9,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/シャインマスカット　矢ケ崎ぶどう園",code:"63295",texts:["西東京市　矢ケ崎ぶどう園\nシャインマスカット"],font:"コーポレートやわ明 Medium",size:7.83,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/ナガノパープル　中村農園",code:"63295",texts:["長野　中村農園\nナガノパープル"],font:"コーポレートやわ明 Medium",size:9.9,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/ナガノパープル　平賀ぶどう園",code:"63295",texts:["長野　平賀ぶどう園\nナガノパープル"],font:"コーポレートやわ明 Medium",size:8.23,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/ブラックビート　一実屋",code:"63295",texts:["山梨　一実屋\nブラックビート"],font:"コーポレートやわ明 Medium",size:10.66,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/ブラックビート　矢ケ崎ぶどう園",code:"63295",texts:["西東京市　矢ケ崎ぶどう園\nブラックビート"],font:"コーポレートやわ明 Medium",size:7.83,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/大峰　ぶどう　山果屋",code:"63295",texts:["南アルプス市 山果屋\n大峰（ぶどう）"],font:"コーポレートやわ明 Medium",size:8.93,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/巨峰　一実屋",code:"63295",texts:["山梨　一実屋\n巨峰"],font:"コーポレートやわ明 Medium",size:10.66,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/巨峰　中村農園",code:"63295",texts:["長野　中村農園\n巨峰"],font:"コーポレートやわ明 Medium",size:12.56,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/巨峰　小野農園",code:"63295",texts:["山梨　小野農園\n巨峰"],font:"コーポレートやわ明 Medium",size:9.23,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/甲斐キング",code:"63295",texts:["山梨 アグリレーベン\n甲斐キング（葡萄）"],font:"コーポレートやわ明 Medium",size:8.63,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ぶどう/矢ケ崎ぶどう園",code:"63295",texts:["山梨　ウッドベリーズ農園\n有機　八ヶ岳ブルーベリー","西東京市　矢ケ崎ぶどう園\nシャインマスカット"],font:"コーポレートやわ明 Medium",size:7.46,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/りんご/なかのきらめき",code:"63295",texts:["長野　やまさ農園\nなかののきらめき\n（りんご）"],font:"コーポレートやわ明 Medium",size:8.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/りんご/ふじ　やまさ農園",code:"63295",texts:["長野　やまさ農園\nサンふじ"],font:"コーポレートやわ明 Medium",size:10,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/りんご/サンふじ やまさ農園",code:"63295",texts:["長野　やまさ農園　\nサンふじ"],font:"コーポレートやわ明 Medium",size:10.39,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/りんご/シナノゴールド　やまさ農園",code:"63295",texts:["長野　やまさ農園\nシナノゴールド（りんご）"],font:"コーポレートやわ明 Medium",size:7.16,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/りんご/シナノドルチェやまさ農園",code:"63295",texts:["長野　やまさ農園\nシナノドルチェ（りんご）","長野　やまさ農園\nピンクレディⓇ（りんご）"],font:"コーポレートやわ明 Medium",size:8.96,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/りんご/ピンクレディ　やまさ農園",code:"63295",texts:["長野　やまさ農園\nピンクレディ（りんご）"],font:"コーポレートやわ明 Medium",size:8.8,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/りんご/ピンクレディ　原りんご園",code:"63295",texts:["長野　原りんご園\nピンクレディ（りんご）"],font:"コーポレートやわ明 Medium",size:8.8,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/りんご/ピンクレディー やまさ農園",code:"63295",texts:["長野　やまさ農園\nピンクレディⓇ（りんご）"],font:"コーポレートやわ明 Medium",size:8.96,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/りんご/ブラムリーやまさ農園",code:"63295",texts:["長野 やまさ農園\nブラムリーアップル\n（青りんご）"],font:"コーポレートやわ明 Medium",size:8.26,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/りんご/ブラムリーアップル",code:"63295",texts:["長野 やまさ農園\nブラムリーアップル"],font:"コーポレートやわ明 Medium",size:10.13,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/りんご/春紅玉　やまさ農園",code:"63295",texts:["長野　やまさ農園\n春紅玉（りんご）"],font:"コーポレートやわ明 Medium",size:9.79,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/りんご/紅玉　やまさ農園",code:"63295",texts:["長野　やまさ農園\n紅玉（りんご）"],font:"コーポレートやわ明 Medium",size:9.5,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/アサイーブルーベリー",code:"63295",texts:["アサイーブルーベリー"],font:"コーポレートやわ明 Medium",size:11.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/アップルキャロット",code:"63295",texts:["アップルキャロット"],font:"コーポレートやわ明 Medium",size:11.86,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/アメチェバナナ　レモンポーネ　いちじくリコッタ　ライチブルーベリー はちみつラズベリー",code:"63295",texts:["はちみつラズベリー","アメリカンチェリー\nバナナ","ココナッツ\nマンゴー","ゴールデンベリー","ライチ\nブルーベリー"],font:"コーポレートやわ明 Medium",size:13.06,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/カカオ",code:"63295",texts:["カカオ"],font:"コーポレートやわ明 Medium",size:15.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/カカオフェア",code:"63295",texts:["カカオ","カカオ\nオランジェット","カカオ\nマスカルポーネ","カカオクリームチーズ","カカオジンジャー","カカオバナナ","カカオマンゴー","カカオレモンピール"],font:"コーポレートやわ明 Medium",size:10.4,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/キウイ　輝らり",code:"63295",texts:["愛媛　輝らり果樹園\nグリーンキウイ"],font:"コーポレートやわ明 Medium",size:9.1,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/キャロットミックス",code:"63295",texts:["\n(にんじん マンゴー いよかんピール)","キャロットミックス"],font:"コーポレートやわ明 Medium",size:6.16,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/クレメンティン",code:"63295",texts:["佐賀　早津みかん園\nクレメンティン"],font:"コーポレートやわ明 Medium",size:9.79,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/グリーンミックス",code:"63295",texts:["\n(小松菜 ゴールドキウイ バナナ)","グリーンミックス"],font:"コーポレートやわ明 Medium",size:6.53,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ゴールデンベリー",code:"63295",texts:["ゴールデンベリー\n（西洋ほおずき）"],font:"コーポレートやわ明 Medium",size:9.4,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ゴールドキウイ",code:"63295",texts:["ゴールドキウイ"],font:"コーポレートやわ明 Medium",size:13.33,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ゴールドデンベリー",code:"63295",texts:["ゴールデンベリー\n（西洋ほおずき）"],font:"コーポレートやわ明 Medium",size:10.8,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/シナノドルチェ　やまさ農園",code:"63295",texts:["長野　やまさ農園\nシナノドルチェ（りんご）"],font:"コーポレートやわ明 Medium",size:9.26,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ジン　シトラス",code:"63295",texts:["※お酒が入ってます","ジン・シトラス"],font:"コーポレートやわ明 Medium",size:13.33,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ソルダム",code:"63295",texts:["山梨　武井プラムファーム\nソルダム（プラム）"],font:"コーポレートやわ明 Medium",size:7.56,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/タカミメロン ウエムラメロンファーム",code:"63295",texts:["熊本 ウエムラメロンファーム\nタカミメロン"],font:"コーポレートやわ明 Medium",size:8.33,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/タカミメロン 菅生農園",code:"63295",texts:["千葉 菅生農園\nタカミメロン"],font:"コーポレートやわ明 Medium",size:9.83,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/タヒチバニラ",code:"63295",texts:["タヒチバニラ"],font:"コーポレートやわ明 Medium",size:13,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/トマト 36ファーム",code:"63295",texts:["八丈島　36ファーム\nさぶのトマト"],font:"コーポレートやわ明 Medium",size:10.09,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/ネクタリン",code:"63295",texts:["山梨 フルーツ工房タンザワ\nネクタリン"],font:"コーポレートやわ明 Medium",size:8.26,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ハスカップ",code:"63295",texts:["北海道 中西ファーム\nハスカップ"],font:"コーポレートやわ明 Medium",size:9.23,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ハニーパンプキン",code:"63295",texts:["北海道 みよい農園\nハニーパンプキン"],font:"コーポレートやわ明 Medium",size:9.4,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/バラード",code:"63295",texts:["山形　関農園\nバラード（洋梨）"],font:"コーポレートやわ明 Medium",size:9.66,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/パイナップル",code:"63295",texts:["パイナップル"],font:"コーポレートやわ明 Medium",size:13,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/フェイジョア",code:"63295",texts:["小平 やまね園\nフェイジョア"],font:"コーポレートやわ明 Medium",size:10.13,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/あんず",code:"63295",texts:["長野 やまさ農園\nあんず"],font:"コーポレートやわ明 Medium",size:10.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/プラム　クイーンローザ",code:"63295",texts:["山梨　武井プラムファーム\nクイーンローザ"],font:"コーポレートやわ明 Medium",size:7.56,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/プラム　サマーエンジェル",code:"63295",texts:["山梨　武井プラムファーム\nサマーエンジェル"],font:"コーポレートやわ明 Medium",size:7.33,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/プラム　サマーエンジェル　杉山農園",code:"63295",texts:["山梨　杉山農園\nサマーエンジェル(プラム）"],font:"コーポレートやわ明 Medium",size:9.5,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/プラム　ソルダム　山果屋",code:"63295",texts:["南アルプス市 山果屋\nプラム（ソルダム）"],font:"コーポレートやわ明 Medium",size:8.93,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/プラム　ソルダム　杉山",code:"63295",texts:["山梨 杉山農園\nプラム（ソルダム）"],font:"コーポレートやわ明 Medium",size:11.06,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/プラム　レッドビュート",code:"63295",texts:["武井プラムファーム\nレッドビュートプラム"],font:"コーポレートやわ明 Medium",size:9.93,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/プラム　大石",code:"63295",texts:["山梨 武井プラムファーム\n大石（プラム）"],font:"コーポレートやわ明 Medium",size:7.86,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/プラム　大石　山果屋",code:"63295",texts:["いちじく\n（ブリジャソットグリーズ）\n1100 yen","ウルトララズベリー\n1600 yen","フェイジョア\n850 yen","ブラックベリー\n1400 yen","ポポー\n1100 yen","ミニキウイ(サルナシ）\n950 yen","山桃\n1500 yen","白いちじく＆赤ワイン\n1200 yen","白いちじく（バナーネ）\n950 yen","黒いちじく\n（ビオレソリエス）\n1450 yen"],font:"コーポレートやわ明 Medium",size:8,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/プラム　太陽　杉山",code:"63295",texts:["山梨 杉山農園\nプラム（太陽）"],font:"コーポレートやわ明 Medium",size:8.46,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/プラム　皇寿",code:"63295",texts:["山梨 武井プラムファーム\n皇寿（プラム）"],font:"コーポレートやわ明 Medium",size:7.86,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/プラム　貴陽",code:"63295",texts:["山梨 武井プラムファーム\n貴陽（きよう）"],font:"コーポレートやわ明 Medium",size:7.86,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/プラム　貴陽　山果屋",code:"63295",texts:["南アルプス市 山果屋\nプラム（貴陽）"],font:"コーポレートやわ明 Medium",size:8.93,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/プルーン",code:"63295",texts:["長野　長田農園\nプルーン"],font:"コーポレートやわ明 Medium",size:9.9,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/プラム系/梅",code:"63295",texts:["和歌山 中松梅園\n青梅"],font:"コーポレートやわ明 Medium",size:10.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ライチ",code:"63295",texts:["ライチ"],font:"コーポレートやわ明 Medium",size:18.1,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ラフランス 関農園",code:"63295",texts:["山形　関農園\nラ・フランス（洋梨）"],font:"コーポレートやわ明 Medium",size:8.83,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/ラフランス",code:"63295",texts:["山形　関農園\nラ・フランス（洋梨）"],font:"コーポレートやわ明 Medium",size:9,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/レインボーレッドキウイ",code:"63295",texts:["愛媛　輝らり果樹園\nレインボーレッドキウイ"],font:"コーポレートやわ明 Medium",size:9.1,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/レッドサワーチェリー",code:"63295",texts:["レッド\nサワーチェリー","レッドサワー\n     チェリー"],font:"コーポレートやわ明 Medium",size:12.83,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/レモンピール 36ファーム",code:"63295",texts:["八丈島 369farm\nさぶのレモンピール"],font:"コーポレートやわ明 Medium",size:9.96,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/アップルマンゴー",code:"63295",texts:["アップルマンゴー"],font:"コーポレートやわ明 Medium",size:11.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/アメリカンチェリー",code:"63295",texts:["アメリカンチェリー"],font:"コーポレートやわ明 Medium",size:11.8,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/ギリシャヨーグルト",code:"63295",texts:["ギリシャヨーグルト"],font:"コーポレートやわ明 Medium",size:11.23,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/クリームチーズ",code:"63295",texts:["クリームチーズ"],font:"コーポレートやわ明 Medium",size:12.8,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/バナナ",code:"63295",texts:["オーガニック\nバナナ"],font:"コーポレートやわ明 Medium",size:12.1,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/ブルーベリー",code:"63295",texts:["ブルーベリー"],font:"コーポレートやわ明 Medium",size:14.46,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/ベーシックヨーグルト",code:"63295",texts:["ベーシックヨーグルト"],font:"コーポレートやわ明 Medium",size:10.4,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/マスカルポーネ",code:"63295",texts:["マスカルポーネ"],font:"コーポレートやわ明 Medium",size:12.96,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/ミックスベリー",code:"63295",texts:["ミックスベリー"],font:"コーポレートやわ明 Medium",size:12.7,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/ラズベリー",code:"63295",texts:["オーガニック\nラズベリー"],font:"コーポレートやわ明 Medium",size:10.5,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/リコッタチーズ",code:"63295",texts:["リコッタチーズ"],font:"コーポレートやわ明 Medium",size:12.66,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/八ヶ岳ブルーベリー　ウッド農園",code:"63295",texts:["山梨　ウッドベリーズ農園\n八ヶ岳ブルーベリー"],font:"コーポレートやわ明 Medium",size:8,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/八ヶ岳ブルーベリー２ 組合",code:"63295",texts:["山梨　八ヶ岳ブルーベリー組合\n八ヶ岳ブルーベリー"],font:"コーポレートやわ明 Medium",size:7.36,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/人気・定番/紅ほっぺ",code:"63295",texts:["長野　駒ヶ根いちご園\n紅ほっぺ"],font:"コーポレートやわ明 Medium",size:8.03,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/八ヶ岳 ミント",code:"63295",texts:["山梨 ウッドベリーズ農園\nミント"],font:"コーポレートやわ明 Medium",size:8.4,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/八ヶ岳　プチトマト",code:"63295",texts:["山梨 ウッドベリーズ農園\n有機 八ヶ岳トマト"],font:"コーポレートやわ明 Medium",size:9.13,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/八ヶ岳ブルーベリー 組合",code:"63295",texts:["八ヶ岳 ブルーベリー組合\n八ヶ岳ブルーベリー"],font:"コーポレートやわ明 Medium",size:7.73,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/八ヶ岳プチトマト",code:"63295",texts:["山梨　ウッドベリーズ農園\n八ヶ岳プチトマト"],font:"コーポレートやわ明 Medium",size:8,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/南水　原農園",code:"63295",texts:["長野 原農園\n南水（梨）"],font:"コーポレートやわ明 Medium",size:10.86,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/台湾パイン",code:"63295",texts:["台湾パイナップル"],font:"コーポレートやわ明 Medium",size:11.63,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/和フェア",code:"63295",texts:["とろっと梅\n（梅干しとはちみつ）","味噌アーモンド","甘酒と柚子"],font:"コーポレートやわ明 Medium",size:12.26,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/塩トマト",code:"63295",texts:["熊本　前田農園\n塩トマト"],font:"コーポレートやわ明 Medium",size:9.7,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/太秋柿",code:"63295",texts:["練馬　荘埜園\n太秋柿"],font:"コーポレートやわ明 Medium",size:10.1,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/富有柿",code:"63295",texts:["岐阜 山本農園\n富有柿"],font:"コーポレートやわ明 Medium",size:9.4,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/幸水　原農園",code:"63295",texts:["長野 原農園\n幸水（梨）"],font:"コーポレートやわ明 Medium",size:10.86,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/弘前　カシス",code:"63295",texts:["青森　弘前倉庫農業\n弘前カシス"],font:"コーポレートやわ明 Medium",size:9.73,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/新しょうが",code:"63295",texts:["新しょうが"],font:"コーポレートやわ明 Medium",size:17.4,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/東京紅",code:"63295",texts:["練馬　荘埜園\n東京紅（柿）"],font:"コーポレートやわ明 Medium",size:10.1,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/いよかん　丸南",code:"63295",texts:["愛媛　丸南フルーツ\nいよかん"],font:"コーポレートやわ明 Medium",size:9.66,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/いよかんピール　丸南",code:"63295",texts:["愛媛　丸南フルーツ\nいよかんピール"],font:"コーポレートやわ明 Medium",size:8.63,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/きんかん　内山きんかん園",code:"63295",texts:["宮﨑　内山きんかん園\n完熟きんかん"],font:"コーポレートやわ明 Medium",size:7.9,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/せとか 丸南",code:"63295",texts:["愛媛　丸南フルーツ\nせとか"],font:"コーポレートやわ明 Medium",size:10.33,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/はっさく　こたつファーム",code:"63295",texts:["和歌山　こたつファーム\nはっさく"],font:"コーポレートやわ明 Medium",size:8.63,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/みかん　こたつファーム",code:"63295",texts:["和歌山　こたつファーム\n完熟みかん"],font:"コーポレートやわ明 Medium",size:8.63,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/みかん　坂下農園",code:"63295",texts:["佐賀　坂下農園\nみかん"],font:"コーポレートやわ明 Medium",size:10.76,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/みｋん　こたつファーム",code:"63295",texts:["和歌山 こたつファーム\n完熟みかん"],font:"コーポレートやわ明 Medium",size:9.1,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/ゆず　丸南",code:"63295",texts:["愛媛　丸南フルーツ\nゆず"],font:"コーポレートやわ明 Medium",size:8.89,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/ゆず　里山みらい",code:"63295",texts:["徳島 里山みらい\nゆず"],font:"コーポレートやわ明 Medium",size:8.89,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/クレメンティン　早津みかん園",code:"63295",texts:["佐賀　早津みかん園\nクレメンティン"],font:"コーポレートやわ明 Medium",size:9.06,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/グレープフルーツ　ルビー丸南",code:"63295",texts:["愛媛　丸南フルーツ\nグレープフルーツルビー"],font:"コーポレートやわ明 Medium",size:9.66,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/デコポン 丸南",code:"63295",texts:["愛媛　丸南フルーツ\nデコポン"],font:"コーポレートやわ明 Medium",size:10.26,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/デコポン 待永農園",code:"63295",texts:["佐賀　まちなが農園\nデコポン"],font:"コーポレートやわ明 Medium",size:9.56,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/デコポン　こたつファーム",code:"63295",texts:["和歌山　こたつファーム\nデコポン"],font:"コーポレートやわ明 Medium",size:9.13,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/デコポン　丸南",code:"63295",texts:["愛媛 丸南フルーツ\nデコポン"],font:"コーポレートやわ明 Medium",size:8.4,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/デコポン　細川果樹園",code:"63295",texts:["宮崎　細川果樹園\nデコポン"],font:"コーポレートやわ明 Medium",size:9.13,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/ブラッド　ひめこはる　ポンカン　はれひめ　丸南",code:"63295",texts:["八丈島 369farm\nさぶのレモン","愛媛　丸南フルーツ\nはれひめ","愛媛　丸南フルーツ\nぽんかん","愛媛　丸南フルーツ\nブラッドオレンジ","愛媛　丸南フルーツ\n媛小春（ひめこはる）"],font:"コーポレートやわ明 Medium",size:9.66,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/ブラッド　ひめこはる　丸南",code:"63295",texts:["愛媛　丸南フルーツ\nブラッドオレンジ","愛媛　丸南フルーツ\n媛小春（ひめこはる）"],font:"コーポレートやわ明 Medium",size:9.66,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/ポンカン　丸南",code:"63295",texts:["愛媛　丸南フルーツ\nポンカン"],font:"コーポレートやわ明 Medium",size:9.66,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/マイヤーレモン　荘埜園",code:"63295",texts:["練馬　荘埜園\nマイヤーレモン"],font:"コーポレートやわ明 Medium",size:10.76,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/マイヤーレモンピール　荘埜園",code:"63295",texts:["練馬　荘埜園\nマイヤーレモンピール"],font:"コーポレートやわ明 Medium",size:9.36,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/ルビーグレープフルーツ",code:"63295",texts:["ルビーグレープフルーツ"],font:"コーポレートやわ明 Medium",size:8.66,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/レモン 36ファーム",code:"63295",texts:["八丈島 369farm\nさぶのレモン"],font:"コーポレートやわ明 Medium",size:10,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/レモン　こたつファーム",code:"63295",texts:["和歌山 こたつファーム\nレモン"],font:"コーポレートやわ明 Medium",size:10.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/レモン　丸南",code:"63295",texts:["愛媛 丸南フルーツ\nレモン"],font:"コーポレートやわ明 Medium",size:10.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/レモンピール 36ファーム",code:"63295",texts:["八丈島 369farm\nさぶのレモンピール"],font:"コーポレートやわ明 Medium",size:10,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/レモンピール　こたつファーム",code:"63295",texts:["和歌山 こたつファーム\nレモンピール"],font:"コーポレートやわ明 Medium",size:9.3,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/南津海　丸南",code:"63295",texts:["愛媛　丸南フルーツ\n南津海（なつみ）"],font:"コーポレートやわ明 Medium",size:8.63,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/完熟きんかん 内山農園",code:"63295",texts:["宮崎　内山農園\n完熟きんかん"],font:"コーポレートやわ明 Medium",size:11.76,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/完熟すだち　里山みらい",code:"63295",texts:["徳島 里山みらい\n完熟すだち"],font:"コーポレートやわ明 Medium",size:8.89,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/愛媛レモン 丸南",code:"63295",texts:["愛媛　丸南フルーツ\nレモン"],font:"コーポレートやわ明 Medium",size:10.33,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/愛媛レモンピール",code:"63295",texts:["愛媛　丸南フルーツ\nレモンピール"],font:"コーポレートやわ明 Medium",size:9.9,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/早生みかん　平岡農園",code:"63295",texts:["淡路島　平岡農園\n早生みかん"],font:"コーポレートやわ明 Medium",size:9.16,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/津の輝　こたつファーム",code:"63295",texts:["和歌山　こたつファーム\n津の輝（つのかがやき）"],font:"コーポレートやわ明 Medium",size:7.9,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/清見オレンジ　こたつファーム",code:"63295",texts:["和歌山 こたつファーム\n清見オレンジ"],font:"コーポレートやわ明 Medium",size:8.96,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/甘夏　丸南",code:"63295",texts:["愛媛 丸南フルーツ\n甘夏"],font:"コーポレートやわ明 Medium",size:10.2,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/柑橘/甘平　丸南",code:"63295",texts:["愛媛　丸南フルーツ\n甘平"],font:"コーポレートやわ明 Medium",size:9.73,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/桃　のろまん農場",code:"63295",texts:["長野 のろまん農場\n桃"],font:"コーポレートやわ明 Medium",size:10.13,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/桃　一実屋",code:"63295",texts:["山梨　一実屋\n桃"],font:"コーポレートやわ明 Medium",size:10.66,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/桃　杉山農園",code:"63295",texts:["山梨　杉山農園\n桃"],font:"コーポレートやわ明 Medium",size:9.23,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/梅干し　甘酒",code:"63295",texts:["岡山 まるみ麹本店\n甘酒","徳島　\n南高梅の梅干し"],font:"コーポレートやわ明 Medium",size:10.13,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/生姜",code:"63295",texts:["すりおろし\n生姜"],font:"コーポレートやわ明 Medium",size:10.7,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/謹賀新年",code:"63295",texts:["謹賀新年"],font:"コーポレートやわ明 Medium",size:21.6,color:0,border:false,borderColor:0,bold:false},
+  {path:"果物シール　大/豊水　いがらし農園",code:"63295",texts:["山形 いがらし農園\n豊水（梨）"],font:"コーポレートやわ明 Medium",size:9.43,color:0,border:true,borderColor:0,bold:false},
+  {path:"果物シール　大/豊水　原農園",code:"63295",texts:["長野 原農園\n豊水（梨）"],font:"コーポレートやわ明 Medium",size:10.86,color:0,border:true,borderColor:0,bold:false},
+  {path:"開運",code:"63295",texts:["開運"],font:"コーポレートやわ明 Medium",size:11.9,color:0,border:false,borderColor:0,bold:false}
+];
+
+// ━━━━━━━━━━ PAPER FORMATS ━━━━━━━━━━
+const PAPERS = {
+  small: {
+    name: '95面 小ラベル (63295/62295)',
+    cols: 5, rows: 19, total: 95,
+    labelW: 35, labelH: 12,
+    marginLeft: 13.5, marginTop: 16.5,
+    gapH: 2, gapV: 2,
+    radius: 2,
+    baseFontPt: 11, minFontPt: 5
+  },
+  large: {
+    name: '12面 大ラベル (28916)',
+    cols: 2, rows: 6, total: 12,
+    labelW: 83.8, labelH: 42.3,
+    marginLeft: 19.3, marginTop: 21.5,
+    gapH: 3.8, gapV: 0,
+    radius: 2.8,
+    baseFontPt: 20, minFontPt: 8
+  }
+};
+
+// ━━━━━━━━━━ CATEGORIES ━━━━━━━━━━
+const CATEGORIES = [
+  { id: '人気・定番', label: '人気・定番', warm: true },
+  { id: '柑橘', label: '柑橘' },
+  { id: 'ぶどう', label: 'ぶどう' },
+  { id: 'りんご', label: 'りんご' },
+  { id: 'プラム', label: 'プラム' },
+  { id: 'その他果物', label: 'その他果物' },
+  { id: 'ジャム', label: 'ジャム' },
+  { id: '季節もの', label: '季節もの' },
+  { id: '住所・注意', label: '住所・注意' },
+  { id: 'ポイントカード', label: 'ポイントカード' },
+  { id: 'すべて', label: 'すべて' },
+];
+
+const COLOR_PRESETS = [
+  '#FF9900', '#FF0000', '#990000', '#339900',
+  '#006600', '#660066', '#993300', '#000000'
+];
+
+// ━━━━━━━━━━ FRUIT AUTO COLOR ━━━━━━━━━━
+function fruitAutoColor(text) {
+  const t = text;
+  // Berry/purple fruits
+  if (/ブルーベリー|ハスカップ|カシス|アサイー|ミックスベリー/.test(t)) return 0x663399;
+  // Red berries/strawberry
+  if (/いちご|紅ほっぺ|ラズベリー|ストロベリー/.test(t)) return 0xCC0000;
+  // Cherry
+  if (/チェリー|さくらんぼ/.test(t)) return 0xCC0033;
+  // Sakura/Pink/Peach
+  if (/さくら|桃/.test(t)) return 0xCC3366;
+  // Citrus and orange fruits
+  if (/みかん|レモン|デコポン|いよかん|ゆず|柑橘|オレンジ|グレープフルーツ|ポンカン|きんかん|せとか|甘夏|甘平|南津海|はっさく|すだち|津の輝|清見|はれひめ|ひめこはる|ブラッド|クレメンティン|柿|マンゴー|パイン|パイナップル|にんじん|キャロット|かぼちゃ|パンプキン|さつまいも|ネクタリン|ゴールデンベリー/.test(t)) return 0xFF6600;
+  // Grape/Purple
+  if (/ぶどう|葡萄|巨峰|ナガノパープル|シャインマスカット|ブラックビート|クインニーナ|甲斐キング|BKシードレス|大峰|プラム|ソルダム|貴陽|皇寿|太陽|大石|レッドビュート|サマーエンジェル|クイーンローザ|プルーン/.test(t)) return 0x660066;
+  // Green fruits
+  if (/キウイ|メロン|ブラムリー|ミント|抹茶|バラード|ラフランス|洋梨|フェイジョア|すいか/.test(t)) return 0x339900;
+  // Brown/Warm
+  if (/カカオ|バニラ|生姜|しょうが|いちじく|あんず|梅|甘酒|味噌/.test(t)) return 0x996633;
+  // Apple/Red fruits
+  if (/りんご|ふじ|紅玉|ピンクレディ|シナノ|なかのきらめき|トマト|東京紅/.test(t)) return 0xCC0000;
+  // Banana
+  if (/バナナ/.test(t)) return 0xCC8800;
+  // Dairy (yogurt, mascarpone, ricotta) - vivid blue
+  if (/ヨーグルト|マスカルポーネ|リコッタ/.test(t)) return 0x0077CC;
+  // Cream cheese - keep orange
+  if (/クリームチーズ/.test(t)) return 0xFF6600;
+  // Default
+  return 0xFF6600;
+}
+
+// Apply fruit-appropriate colors to all built-in labels
+LABELS.forEach(lb => {
+  if (lb.texts.length > 0) {
+    const allText = lb.texts.join(' ');
+    const fc = fruitAutoColor(allText);
+    lb.color = fc;
+    if (lb.border) lb.borderColor = fc;
+  }
+});
+
+// ━━━━━━━━━━ HELPERS ━━━━━━━━━━
+function decToHex(n) {
+  if (n === 0) return '#000000';
+  return '#' + (n >>> 0).toString(16).padStart(6, '0');
+}
+
+function fontStack(f) {
+  return '"コーポレートやわ明 Medium", "Yu Mincho", "YuMincho", serif';
+}
+
+function detectPaper(code) {
+  return code === '28916' ? 'large' : 'small';
+}
+
+function labelName(path) {
+  const parts = path.split('/');
+  return parts[parts.length - 1];
+}
+
+function getCategory(lb) {
+  // Custom labels have explicit category
+  if (lb._category) return lb._category;
+  const p = lb.path;
+  const parts = p.split('/');
+  if (parts[0] === 'point card') return 'ポイントカード';
+  if (p.includes('住所') || p.includes('注意') || p.includes('ハーフバット')) return '住所・注意';
+  if (parts[0] === 'ジャム') return 'ジャム';
+  if (parts[0] === '季節もの') return '季節もの';
+  if (parts[0] === '果物シール　大') {
+    if (parts.length > 2) {
+      if (parts[1] === '人気・定番') return '人気・定番';
+      if (parts[1] === 'ぶどう') return 'ぶどう';
+      if (parts[1] === 'りんご') return 'りんご';
+      if (parts[1] === 'プラム系') return 'プラム';
+      if (parts[1] === '柑橘') return '柑橘';
+    }
+    return 'その他果物';
+  }
+  // Fallbacks
+  if (p.includes('サンド用')) return 'その他果物';
+  return 'その他果物';
+}
+
+// Canvas-based text measurement for auto-fit
+const _measureCanvas = document.createElement('canvas').getContext('2d');
+function measureText(text, fontFamily, fontSizePt, bold) {
+  const fontSizePx = fontSizePt * 1.333;
+  _measureCanvas.font = (bold ? 'bold ' : '') + fontSizePx + 'px ' + fontFamily;
+  const lines = text.split('\n');
+  let maxW = 0;
+  for (const line of lines) {
+    const w = _measureCanvas.measureText(line).width;
+    if (w > maxW) maxW = w;
+  }
+  const lineH = fontSizePx * 1.3;
+  return { width: maxW, height: lines.length * lineH };
+}
+
+// mm to px (approx 96dpi)
+function mmToPx(mm) { return mm * 3.7795; }
+
+function autoFitFontSize(text, labelWmm, labelHmm, fontFamily, bold, basePt, minPt) {
+  const padMm = 1;
+  const maxWpx = mmToPx(labelWmm - padMm * 2);
+  const maxHpx = mmToPx(labelHmm - padMm * 2);
+  let sz = basePt;
+  while (sz > minPt) {
+    const m = measureText(text, fontFamily, sz, bold);
+    if (m.width <= maxWpx && m.height <= maxHpx) break;
+    sz -= 0.5;
+  }
+  return Math.max(sz, minPt);
+}
+
+// ━━━━━━━━━━ STATE ━━━━━━━━━━
+let allLabels = [];
+let activeTab = '人気・定番';
+let searchQuery = '';
+let currentPrintLabel = null;
+let selectedTexts = [];
+let editingLabelIndex = -1; // -1 = new, >=0 = editing
+let contextTarget = null;
+let longPressTimer = null;
+
+const STORAGE_KEY = 'woodberries-custom-labels';
+const OVERRIDE_KEY = 'woodberries-label-overrides';
+
+function loadData() {
+  allLabels = LABELS.map(lb => Object.assign({}, lb, { _builtin: true }));
+
+  // Load overrides for built-in labels
+  try {
+    const overrides = JSON.parse(localStorage.getItem(OVERRIDE_KEY) || '{}');
+    for (const [idx, ov] of Object.entries(overrides)) {
+      const i = parseInt(idx);
+      if (i >= 0 && i < allLabels.length) {
+        Object.assign(allLabels[i], ov, { _builtin: true, _overridden: true });
+      }
+    }
+  } catch(e) {}
+
+  // Load custom labels
+  try {
+    const custom = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    for (const lb of custom) {
+      lb._custom = true;
+      allLabels.push(lb);
+    }
+  } catch(e) {}
+}
+
+function saveCustomLabels() {
+  const custom = allLabels.filter(lb => lb._custom);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(custom));
+}
+
+function saveOverrides() {
+  const overrides = {};
+  allLabels.forEach((lb, i) => {
+    if (lb._overridden) {
+      const orig = LABELS[i];
+      if (orig) {
+        const ov = {};
+        for (const k of ['texts','font','size','color','border','borderColor','bold','_category','image']) {
+          if (JSON.stringify(lb[k]) !== JSON.stringify(orig[k])) ov[k] = lb[k];
+        }
+        if (Object.keys(ov).length) overrides[i] = ov;
+      }
+    }
+  });
+  localStorage.setItem(OVERRIDE_KEY, JSON.stringify(overrides));
+}
+
+// ━━━━━━━━━━ CATEGORY TABS ━━━━━━━━━━
+function countForCat(catId) {
+  if (catId === 'すべて') return allLabels.length;
+  return allLabels.filter(lb => getCategory(lb) === catId).length;
+}
+
+function renderTabs() {
+  const bar = document.getElementById('tab-bar');
+  bar.innerHTML = '';
+  CATEGORIES.forEach(cat => {
+    const pill = document.createElement('div');
+    pill.className = 'tab-pill';
+    const count = countForCat(cat.id);
+    if (activeTab === cat.id) {
+      pill.classList.add(cat.warm ? 'active-warm' : 'active');
+    }
+    pill.innerHTML = cat.label + ' <span class="tab-badge">' + count + '</span>';
+    pill.addEventListener('click', () => {
+      activeTab = cat.id;
+      searchQuery = '';
+      document.getElementById('search-box').value = '';
+      document.getElementById('search-clear').style.display = 'none';
+      renderTabs();
+      renderGrid();
+    });
+    bar.appendChild(pill);
+  });
+}
+
+// ━━━━━━━━━━ LABEL GRID ━━━━━━━━━━
+function getFilteredLabels() {
+  let list = allLabels;
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    list = list.filter(lb => {
+      const name = lb.path.toLowerCase();
+      const texts = lb.texts.join(' ').toLowerCase();
+      return name.includes(q) || texts.includes(q);
+    });
+  } else if (activeTab !== 'すべて') {
+    list = list.filter(lb => getCategory(lb) === activeTab);
+  }
+  // Sort alphabetically by label name
+  list.sort((a, b) => labelName(a.path).localeCompare(labelName(b.path), 'ja'));
+  return list;
+}
+
+function renderGrid() {
+  const filtered = getFilteredLabels();
+  const grid = document.getElementById('label-grid');
+  const noRes = document.getElementById('no-results');
+  const catName = document.getElementById('current-cat-name');
+  const countEl = document.getElementById('label-count');
+
+  if (searchQuery) {
+    catName.textContent = '検索結果: "' + searchQuery + '"';
+  } else {
+    catName.textContent = activeTab;
+  }
+  countEl.textContent = filtered.length + ' 件';
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    noRes.style.display = 'block';
+    return;
+  }
+  noRes.style.display = 'none';
+  grid.innerHTML = '';
+
+  filtered.forEach(lb => {
+    const isLarge = detectPaper(lb.code) === 'large';
+    const btn = document.createElement('div');
+    btn.className = 'label-btn ' + (isLarge ? 'label-btn-large' : 'label-btn-small');
+
+    const textColor = decToHex(lb.color);
+    const borderColor = lb.border ? decToHex(lb.borderColor) : '#e0e0e0';
+
+    btn.style.border = '1.5px solid ' + borderColor;
+    btn.style.color = textColor;
+
+    const firstText = lb.texts[0] || '';
+    const lines = firstText.split('\n');
+
+    // For multi-line: show last line as main, rest as sub
+    let mainText, subText = '';
+    if (lines.length >= 2) {
+      // First line(s) = farm/region info, last line(s) = fruit name
+      subText = lines.slice(0, -1).join(' ');
+      mainText = lines[lines.length - 1];
+    } else {
+      mainText = lines[0];
+    }
+
+    let html = '';
+    if (lb.image) {
+      html += '<img src="' + lb.image + '" style="max-width:90%;max-height:' + (isLarge ? '60' : '45') + 'px;object-fit:contain;border-radius:3px">';
+      if (mainText) html += '<div class="btn-sub-text" style="margin-top:2px">' + mainText + '</div>';
+    } else {
+      html = '<div class="btn-main-text">' + mainText + '</div>';
+      if (subText) {
+        html += '<div class="btn-sub-text">' + subText + '</div>';
+      }
+    }
+    btn.innerHTML = html;
+
+    // Click: open print modal
+    btn.addEventListener('click', (e) => {
+      if (e.button === 2) return; // right click handled separately
+      openPrintModal(lb);
+    });
+
+    // Right-click: context menu
+    btn.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showContextMenu(e.clientX, e.clientY, lb);
+    });
+
+    // Long-press for touch
+    btn.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch') return;
+      longPressTimer = setTimeout(() => {
+        e.preventDefault();
+        showContextMenu(e.clientX, e.clientY, lb);
+      }, 600);
+    });
+    btn.addEventListener('pointerup', () => clearTimeout(longPressTimer));
+    btn.addEventListener('pointercancel', () => clearTimeout(longPressTimer));
+    btn.addEventListener('pointermove', () => clearTimeout(longPressTimer));
+
+    grid.appendChild(btn);
+  });
+}
+
+// ━━━━━━━━━━ CONTEXT MENU ━━━━━━━━━━
+function showContextMenu(x, y, lb) {
+  contextTarget = lb;
+  const menu = document.getElementById('context-menu');
+  const delBtn = document.getElementById('ctx-delete');
+
+  // Show delete only for custom labels
+  delBtn.style.display = lb._custom ? 'block' : 'none';
+
+  menu.style.display = 'block';
+  // Position, keeping in viewport
+  const mw = 160, mh = 80;
+  menu.style.left = Math.min(x, window.innerWidth - mw) + 'px';
+  menu.style.top = Math.min(y, window.innerHeight - mh) + 'px';
+}
+
+function hideContextMenu() {
+  document.getElementById('context-menu').style.display = 'none';
+  contextTarget = null;
+}
+
+// ━━━━━━━━━━ PRINT PREVIEW MODAL ━━━━━━━━━━
+function openPrintModal(lb) {
+  currentPrintLabel = lb;
+  const modal = document.getElementById('print-modal');
+  document.getElementById('pm-title').textContent = labelName(lb.path);
+
+  // Paper
+  const paperType = detectPaper(lb.code);
+  document.getElementById('pm-paper').value = paperType;
+
+  // Default count = fill sheet
+  const paper = PAPERS[paperType];
+  document.getElementById('pm-count').value = paper.total;
+  document.getElementById('pm-count').max = paper.total;
+  document.getElementById('pm-count-hint').textContent = '最大 ' + paper.total + ' 枚/シート';
+
+  // Preview
+  renderPrintPreview(lb, lb.texts[0], paperType);
+
+  // Text selection / quantity allocation
+  const tsa = document.getElementById('text-select-area');
+  const singleRow = document.getElementById('single-count-row');
+  const totalInfo = document.getElementById('pm-total-info');
+  textQuantities = [];
+
+  if (lb.texts.length <= 1) {
+    tsa.innerHTML = '';
+    singleRow.style.display = 'flex';
+    totalInfo.style.display = 'none';
+    selectedTexts = [true];
+  } else {
+    // Multi-text: show quantity inputs for each text
+    singleRow.style.display = 'none';
+    totalInfo.style.display = 'block';
+    document.getElementById('pm-total-max').textContent = paper.total;
+    const perText = Math.floor(paper.total / lb.texts.length);
+    let html = '<div class="ts-heading">種類ごとの枚数を指定:</div>';
+    lb.texts.forEach((t, i) => {
+      const displayT = t.replace(/\n/g, ' / ');
+      textQuantities[i] = perText;
+      html += '<div class="ts-item" style="margin-bottom:6px;gap:10px">' +
+        '<input type="number" min="0" max="' + paper.total + '" value="' + perText + '" data-tidx="' + i + '" ' +
+        'style="width:56px;padding:4px 6px;border:1px solid #d1d5db;border-radius:4px;font-size:13px;text-align:center">' +
+        '<span style="flex:1">' + displayT + '</span>' +
+        '<button type="button" class="pm-edit-text-btn" data-tidx="' + i + '" ' +
+        'style="font-size:11px;padding:2px 8px;border:1px solid #d1d5db;border-radius:4px;background:#fff;cursor:pointer;color:#4b5563">編集</button>' +
+        '</div>';
+    });
+    tsa.innerHTML = html;
+    updateTotalInfo();
+
+    // Quantity input handlers
+    tsa.querySelectorAll('input[type=number]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        textQuantities[parseInt(inp.dataset.tidx)] = parseInt(inp.value) || 0;
+        updateTotalInfo();
+      });
+    });
+
+    // Text edit handlers (for price changes etc.)
+    tsa.querySelectorAll('.pm-edit-text-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.tidx);
+        const current = lb.texts[idx];
+        const newVal = prompt('テキストを編集（改行は \\n で入力）:', current.replace(/\n/g, '\\n'));
+        if (newVal !== null) {
+          lb.texts[idx] = newVal.replace(/\\n/g, '\n');
+          // Update display
+          const span = btn.parentElement.querySelector('span');
+          span.textContent = lb.texts[idx].replace(/\n/g, ' / ');
+          renderPrintPreview(lb, lb.texts[idx], document.getElementById('pm-paper').value);
+          // Save override if built-in label
+          saveOverrides();
+        }
+      });
+    });
+
+    selectedTexts = lb.texts.map(() => true);
+  }
+
+  modal.classList.add('open');
+}
+
+function renderPrintPreview(lb, text, paperType) {
+  const paper = PAPERS[paperType || detectPaper(lb.code)];
+  const scale = paperType === 'large' || detectPaper(lb.code) === 'large' ? 2.5 : 3.5;
+  const w = paper.labelW * scale;
+  const h = paper.labelH * scale;
+  const textColor = decToHex(lb.color);
+  const borderColor = decToHex(lb.borderColor);
+  const borderStyle = '';
+  const fontFamily = fontStack(lb.font);
+  const fontSize = (lb.size || 10) * (scale * 0.28);
+  const displayText = (text || '').replace(/\n/g, '<br>');
+
+  let content = '';
+  if (lb.image) {
+    content = '<img src="' + lb.image + '" style="max-width:' + (w - 8) + 'px;max-height:' + (h - 8) + 'px;object-fit:contain">';
+    if (displayText && displayText !== '(プレビュー)') {
+      content += '<div style="font-size:' + (fontSize * 0.7) + 'px;margin-top:4px">' + displayText + '</div>';
+    }
+  } else {
+    content = displayText;
+  }
+
+  document.getElementById('print-preview-area').innerHTML =
+    '<div class="preview-label" style="width:' + w + 'px;height:' + h + 'px;' +
+    'border-radius:' + (paper.radius * scale) + 'px;' + borderStyle +
+    'color:' + textColor + ';font-family:' + fontFamily + ';font-size:' + fontSize + 'px;' +
+    (lb.bold ? 'font-weight:bold;' : '') + 'flex-direction:column;">' + content + '</div>';
+}
+
+function closePrintModal() {
+  document.getElementById('print-modal').classList.remove('open');
+  currentPrintLabel = null;
+}
+
+function updatePrintPaperHint() {
+  const pt = document.getElementById('pm-paper').value;
+  const paper = PAPERS[pt];
+  document.getElementById('pm-count-hint').textContent = '最大 ' + paper.total + ' 枚/シート';
+  const inp = document.getElementById('pm-count');
+  inp.max = paper.total;
+  if (parseInt(inp.value) > paper.total) inp.value = paper.total;
+  // Update multi-text total max
+  const maxEl = document.getElementById('pm-total-max');
+  if (maxEl) maxEl.textContent = paper.total;
+  updateTotalInfo();
+  if (currentPrintLabel) {
+    renderPrintPreview(currentPrintLabel, currentPrintLabel.texts[0], pt);
+  }
+}
+
+// ━━━━━━━━━━ HELPERS ━━━━━━━━━━
+let textQuantities = [];
+
+function updateTotalInfo() {
+  const total = textQuantities.reduce((a, b) => a + b, 0);
+  const el = document.getElementById('pm-total-num');
+  if (el) {
+    el.textContent = total;
+    const max = parseInt(document.getElementById('pm-total-max').textContent);
+    el.style.color = total > max ? '#dc2626' : total === max ? '#16a34a' : '#111827';
+  }
+}
+
+// ━━━━━━━━━━ PRINT ━━━━━━━━━━
+function doPrint() {
+  if (!currentPrintLabel) return;
+  const lb = currentPrintLabel;
+  const paperType = document.getElementById('pm-paper').value;
+  const paper = PAPERS[paperType];
+
+  // Build the list of texts to print with their quantities
+  let printQueue = [];
+  if (lb.texts.length > 1 && textQuantities.length > 0) {
+    // Multi-text mode: use specified quantities
+    lb.texts.forEach((t, i) => {
+      const qty = textQuantities[i] || 0;
+      for (let j = 0; j < qty; j++) printQueue.push(t);
+    });
+    if (printQueue.length === 0) {
+      alert('枚数を1つ以上指定してください');
+      return;
+    }
+    if (printQueue.length > paper.total) {
+      alert('合計が' + paper.total + '枚を超えています（現在' + printQueue.length + '枚）');
+      return;
+    }
+  } else {
+    // Single-text mode: use pm-count
+    const numCopies = Math.min(parseInt(document.getElementById('pm-count').value) || paper.total, paper.total);
+    const text = lb.texts[0] || '';
+    for (let j = 0; j < numCopies; j++) printQueue.push(text);
+  }
+  const numCopies = printQueue.length;
+
+  const sheet = document.getElementById('print-area');
+  sheet.innerHTML = '';
+  sheet.style.width = '210mm';
+  sheet.style.height = '297mm';
+  sheet.style.position = 'relative';
+
+  const textColor = decToHex(lb.color);
+  const borderColor = decToHex(lb.borderColor);
+  const fFamily = fontStack(lb.font);
+
+  let placed = 0;
+  for (let row = 0; row < paper.rows && placed < numCopies; row++) {
+    for (let col = 0; col < paper.cols && placed < numCopies; col++) {
+      const text = printQueue[placed];
+      const displayText = text.replace(/\n/g, '<br>');
+
+      const left = paper.marginLeft + col * (paper.labelW + paper.gapH);
+      const top = paper.marginTop + row * (paper.labelH + paper.gapV);
+
+      // Auto-fit font size
+      const fittedSize = autoFitFontSize(text, paper.labelW, paper.labelH, fFamily, lb.bold, paper.baseFontPt, paper.minFontPt);
+      // If original label has a size that fits, prefer it
+      const origSize = lb.size || paper.baseFontPt;
+      const origMeasure = measureText(text, fFamily, origSize, lb.bold);
+      const maxWpx = mmToPx(paper.labelW - 2);
+      const maxHpx = mmToPx(paper.labelH - 2);
+      const useSize = (origMeasure.width <= maxWpx && origMeasure.height <= maxHpx) ? origSize : fittedSize;
+
+      const div = document.createElement('div');
+      div.className = 'sheet-label';
+      div.style.cssText =
+        'left:' + left + 'mm;top:' + top + 'mm;width:' + paper.labelW + 'mm;height:' + paper.labelH + 'mm;' +
+        'border-radius:' + paper.radius + 'mm;' +
+        'color:' + textColor + ';font-family:' + fFamily + ';font-size:' + useSize + 'pt;' +
+        (lb.bold ? 'font-weight:bold;' : '') +
+        'line-height:1.25;';
+      if (lb.image) {
+        div.style.flexDirection = 'column';
+        const img = document.createElement('img');
+        img.src = lb.image;
+        img.style.cssText = 'max-width:' + (paper.labelW - 2) + 'mm;max-height:' + (paper.labelH - 2) + 'mm;object-fit:contain;';
+        if (displayText && displayText.replace(/<br>/g,'').trim()) {
+          img.style.maxHeight = (paper.labelH * 0.65) + 'mm';
+          div.innerHTML = '';
+          div.appendChild(img);
+          const txt = document.createElement('div');
+          txt.style.cssText = 'font-size:' + (useSize * 0.7) + 'pt;line-height:1.2;';
+          txt.innerHTML = displayText;
+          div.appendChild(txt);
+        } else {
+          div.innerHTML = '';
+          div.appendChild(img);
+        }
+      } else {
+        div.innerHTML = displayText;
+      }
+      sheet.appendChild(div);
+      placed++;
+    }
+  }
+
+  closePrintModal();
+  setTimeout(() => window.print(), 200);
+}
+
+// ━━━━━━━━━━ NEW / EDIT LABEL MODAL ━━━━━━━━━━
+let editColor = '#FF9900';
+let editCustomColor = '#FF9900';
+let editImageData = null;
+
+function openEditModal(lb, lbIndex) {
+  editingLabelIndex = lbIndex; // -1 for new
+  const modal = document.getElementById('edit-modal');
+  const title = document.getElementById('em-title');
+  const saveBtn = document.getElementById('em-save');
+  const actionsDiv = document.getElementById('em-actions');
+
+  // Remove old delete button if exists
+  const oldDel = document.getElementById('em-delete');
+  if (oldDel) oldDel.remove();
+
+  if (lbIndex >= 0 && lb) {
+    title.textContent = 'シールを編集';
+    saveBtn.textContent = '保存する';
+    // Populate fields
+    const firstText = lb.texts[0] || '';
+    const lines = firstText.split('\n');
+    if (lines.length >= 2) {
+      // Try to parse region + farm from first line
+      const topLine = lines[0];
+      const parts = topLine.split(/[\s　]+/);
+      document.getElementById('em-region').value = parts[0] || '';
+      document.getElementById('em-farm').value = parts.slice(1).join(' ') || '';
+      document.getElementById('em-fruit').value = lines.slice(1).join('\n') || '';
+    } else {
+      document.getElementById('em-fruit').value = firstText;
+      document.getElementById('em-farm').value = '';
+      document.getElementById('em-region').value = '';
+    }
+    const pt = detectPaper(lb.code);
+    document.querySelectorAll('input[name="em-paper"]').forEach(r => r.checked = r.value === pt);
+    editColor = decToHex(lb.color);
+    document.getElementById('em-border').checked = lb.border;
+    // Category
+    const cat = getCategory(lb);
+    document.getElementById('em-category').value = cat;
+
+    // Image
+    if (lb.image) {
+      editImageData = lb.image;
+      document.getElementById('em-img-name').textContent = '(既存の画像)';
+      document.getElementById('em-img-clear').style.display = 'inline';
+      document.getElementById('em-img-preview').style.display = 'block';
+      document.getElementById('em-img-thumb').src = lb.image;
+    } else {
+      editImageData = null;
+      document.getElementById('em-img-file').value = '';
+      document.getElementById('em-img-name').textContent = '';
+      document.getElementById('em-img-clear').style.display = 'none';
+      document.getElementById('em-img-preview').style.display = 'none';
+    }
+
+    // Delete button for custom labels
+    if (lb._custom) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn btn-danger';
+      delBtn.id = 'em-delete';
+      delBtn.textContent = '削除';
+      delBtn.addEventListener('click', () => {
+        if (confirm('このラベルを削除しますか？')) {
+          allLabels.splice(allLabels.indexOf(lb), 1);
+          saveCustomLabels();
+          closeEditModal();
+          renderTabs();
+          renderGrid();
+        }
+      });
+      actionsDiv.insertBefore(delBtn, actionsDiv.firstChild);
+    }
+  } else {
+    title.textContent = '新しいシールを作成';
+    saveBtn.textContent = '登録する';
+    document.getElementById('em-fruit').value = '';
+    document.getElementById('em-farm').value = '';
+    document.getElementById('em-region').value = '';
+    document.querySelectorAll('input[name="em-paper"]').forEach(r => r.checked = r.value === 'small');
+    editColor = '#FF9900';
+    document.getElementById('em-border').checked = true;
+    document.getElementById('em-category').value = 'その他果物';
+    editImageData = null;
+    document.getElementById('em-img-file').value = '';
+    document.getElementById('em-img-name').textContent = '';
+    document.getElementById('em-img-clear').style.display = 'none';
+    document.getElementById('em-img-preview').style.display = 'none';
+  }
+
+  renderColorSwatches();
+  updateEditPreview();
+  modal.classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  editingLabelIndex = -1;
+}
+
+function renderColorSwatches() {
+  const container = document.getElementById('em-colors');
+  container.innerHTML = '';
+  COLOR_PRESETS.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'color-swatch' + (editColor === c ? ' selected' : '');
+    div.style.background = c;
+    div.addEventListener('click', () => {
+      editColor = c;
+      renderColorSwatches();
+      updateEditPreview();
+    });
+    container.appendChild(div);
+  });
+  // Custom color
+  const wrap = document.createElement('div');
+  wrap.className = 'color-custom-wrap';
+  const inp = document.createElement('input');
+  inp.type = 'color';
+  inp.value = editCustomColor;
+  const isCustom = !COLOR_PRESETS.includes(editColor);
+  if (isCustom) {
+    inp.value = editColor;
+    editCustomColor = editColor;
+  }
+  inp.addEventListener('input', () => {
+    editCustomColor = inp.value;
+    editColor = inp.value;
+    renderColorSwatches();
+    updateEditPreview();
+  });
+  wrap.appendChild(inp);
+  container.appendChild(wrap);
+}
+
+function buildLabelText() {
+  const fruit = document.getElementById('em-fruit').value.trim();
+  const farm = document.getElementById('em-farm').value.trim();
+  const region = document.getElementById('em-region').value.trim();
+  if (!fruit) return '';
+  if (region || farm) {
+    const topParts = [region, farm].filter(Boolean).join(' ');
+    return topParts + '\n' + fruit;
+  }
+  return fruit;
+}
+
+function updateEditPreview() {
+  const text = buildLabelText() || '(プレビュー)';
+  const hasBorder = document.getElementById('em-border').checked;
+  const paperType = document.querySelector('input[name="em-paper"]:checked').value;
+  const paper = PAPERS[paperType];
+  const scale = paperType === 'large' ? 2.5 : 3.5;
+  const w = paper.labelW * scale;
+  const h = paper.labelH * scale;
+  const displayText = text.replace(/\n/g, '<br>');
+  const borderStyle = hasBorder ? 'border:2px solid ' + editColor + ';' : 'border:1px solid #e0e0e0;';
+
+  let previewContent = '';
+  if (editImageData) {
+    previewContent = '<img src="' + editImageData + '" style="max-width:' + (w - 8) + 'px;max-height:' + (h - 8) + 'px;object-fit:contain">';
+    if (displayText && displayText !== '(プレビュー)') {
+      previewContent += '<div style="font-size:' + (11 * scale * 0.28 * 0.7) + 'px;margin-top:3px">' + displayText + '</div>';
+    }
+  } else {
+    previewContent = displayText;
+  }
+
+  document.getElementById('edit-preview-label').outerHTML =
+    '<div id="edit-preview-label" style="width:' + w + 'px;height:' + h + 'px;display:flex;align-items:center;' +
+    'justify-content:center;text-align:center;border-radius:' + (paper.radius * scale) + 'px;' +
+    borderStyle + 'color:' + editColor + ';font-size:' + (11 * scale * 0.28) + 'px;line-height:1.4;' +
+    'font-family:' + fontStack('コーポレートやわ明 Medium') + ';flex-direction:column;">' + previewContent + '</div>';
+}
+
+function hexToDecColor(hex) {
+  if (!hex || hex === '#000000') return 0;
+  return parseInt(hex.replace('#', ''), 16);
+}
+
+function saveLabel() {
+  const fruit = document.getElementById('em-fruit').value.trim();
+  if (!fruit) {
+    alert('果物名を入力してください');
+    return;
+  }
+
+  const text = buildLabelText();
+  const paperType = document.querySelector('input[name="em-paper"]:checked').value;
+  const code = paperType === 'large' ? '28916' : '63295';
+  const hasBorder = document.getElementById('em-border').checked;
+  const category = document.getElementById('em-category').value;
+  const colorDec = hexToDecColor(editColor);
+
+  if (editingLabelIndex >= 0) {
+    // Edit existing
+    const lb = allLabels[editingLabelIndex];
+    lb.texts = [text];
+    lb.code = code;
+    lb.color = colorDec;
+    lb.border = hasBorder;
+    lb.borderColor = hasBorder ? colorDec : 0;
+    lb._category = category;
+    if (editImageData) {
+      lb.image = editImageData;
+    } else {
+      delete lb.image;
+    }
+
+    if (lb._custom) {
+      saveCustomLabels();
+    } else {
+      lb._overridden = true;
+      saveOverrides();
+    }
+  } else {
+    // New label
+    const farm = document.getElementById('em-farm').value.trim();
+    const region = document.getElementById('em-region').value.trim();
+    const pathParts = [category, fruit];
+    if (farm) pathParts.splice(1, 0, farm);
+    const autoColor = fruitAutoColor(text);
+    const finalColor = colorDec || autoColor;
+    const newLabel = {
+      path: pathParts.join('/'),
+      code: code,
+      texts: [text],
+      font: 'コーポレートやわ明 Medium',
+      size: 11.3,
+      color: finalColor,
+      border: hasBorder,
+      borderColor: hasBorder ? finalColor : 0,
+      bold: false,
+      _custom: true,
+      _category: category
+    };
+    if (editImageData) {
+      newLabel.image = editImageData;
+    }
+    allLabels.push(newLabel);
+    saveCustomLabels();
+  }
+
+  closeEditModal();
+  renderTabs();
+  renderGrid();
+}
+
+// ━━━━━━━━━━ POPULATE CATEGORY DROPDOWN ━━━━━━━━━━
+function populateCategoryDropdown() {
+  const sel = document.getElementById('em-category');
+  sel.innerHTML = '';
+  CATEGORIES.filter(c => c.id !== 'すべて').forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.label;
+    sel.appendChild(opt);
+  });
+}
+
+// ━━━━━━━━━━ EVENT LISTENERS ━━━━━━━━━━
+document.getElementById('search-box').addEventListener('input', (e) => {
+  searchQuery = e.target.value.trim();
+  document.getElementById('search-clear').style.display = searchQuery ? 'block' : 'none';
+  renderGrid();
+});
+
+document.getElementById('search-clear').addEventListener('click', () => {
+  searchQuery = '';
+  document.getElementById('search-box').value = '';
+  document.getElementById('search-clear').style.display = 'none';
+  renderGrid();
+});
+
+document.getElementById('btn-new-label').addEventListener('click', () => {
+  openEditModal(null, -1);
+});
+
+// Print modal
+document.getElementById('pm-paper').addEventListener('change', updatePrintPaperHint);
+document.getElementById('pm-close').addEventListener('click', closePrintModal);
+document.getElementById('pm-print').addEventListener('click', doPrint);
+document.getElementById('print-modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('print-modal')) closePrintModal();
+});
+
+// Edit modal
+document.getElementById('em-cancel').addEventListener('click', closeEditModal);
+document.getElementById('em-save').addEventListener('click', saveLabel);
+document.getElementById('edit-modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('edit-modal')) closeEditModal();
+});
+
+// Live preview updates
+['em-fruit', 'em-farm', 'em-region'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateEditPreview);
+});
+document.getElementById('em-border').addEventListener('change', updateEditPreview);
+document.querySelectorAll('input[name="em-paper"]').forEach(r => {
+  r.addEventListener('change', updateEditPreview);
+});
+
+// Image upload
+document.getElementById('em-img-btn').addEventListener('click', () => {
+  document.getElementById('em-img-file').click();
+});
+document.getElementById('em-img-file').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    editImageData = ev.target.result;
+    document.getElementById('em-img-name').textContent = file.name;
+    document.getElementById('em-img-clear').style.display = 'inline';
+    document.getElementById('em-img-preview').style.display = 'block';
+    document.getElementById('em-img-thumb').src = editImageData;
+    updateEditPreview();
+  };
+  reader.readAsDataURL(file);
+});
+document.getElementById('em-img-clear').addEventListener('click', () => {
+  editImageData = null;
+  document.getElementById('em-img-file').value = '';
+  document.getElementById('em-img-name').textContent = '';
+  document.getElementById('em-img-clear').style.display = 'none';
+  document.getElementById('em-img-preview').style.display = 'none';
+  updateEditPreview();
+});
+
+// Context menu
+document.getElementById('ctx-edit').addEventListener('click', () => {
+  if (contextTarget) {
+    const idx = allLabels.indexOf(contextTarget);
+    openEditModal(contextTarget, idx);
+  }
+  hideContextMenu();
+});
+document.getElementById('ctx-delete').addEventListener('click', () => {
+  if (contextTarget && contextTarget._custom) {
+    if (confirm('このラベルを削除しますか？')) {
+      const idx = allLabels.indexOf(contextTarget);
+      if (idx >= 0) allLabels.splice(idx, 1);
+      saveCustomLabels();
+      renderTabs();
+      renderGrid();
+    }
+  }
+  hideContextMenu();
+});
+
+document.addEventListener('click', (e) => {
+  if (!document.getElementById('context-menu').contains(e.target)) {
+    hideContextMenu();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closePrintModal();
+    closeEditModal();
+    hideContextMenu();
+  }
+});
+
+// ━━━━━━━━━━ INIT ━━━━━━━━━━
+loadData();
+populateCategoryDropdown();
+renderTabs();
+renderGrid();
+</script>
+</body>
+</html>
