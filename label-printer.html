@@ -832,11 +832,11 @@ body {
   <div class="modal-box" style="width:480px">
     <h3 style="font-size:17px;margin-bottom:16px;font-weight:600">設定</h3>
     <div class="edit-field">
-      <label>GitHub Token <span class="optional-tag">(データ共有に必要)</span></label>
-      <input type="password" id="set-token" style="width:100%;padding:7px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:14px;font-family:monospace" placeholder="ghp_xxxx...">
+      <label>共有URL <span class="optional-tag">(Google Apps Script)</span></label>
+      <input type="url" id="set-gas-url" style="width:100%;padding:7px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:14px;font-family:monospace" placeholder="https://script.google.com/macros/s/xxxxx/exec">
       <div style="font-size:11px;color:var(--gray-500);margin-top:4px;line-height:1.5">
-        新規作成・編集を保存するために必要です。<br>
-        <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=fruit-label-printer" target="_blank" style="color:var(--blue)">こちらからトークンを作成</a>（public_repo にチェック → Generate token）
+        新規作成・編集を全端末で共有するためのURLです。<br>
+        1回設定すれば、トークンなしで読み書きできます。
       </div>
     </div>
     <div id="sync-status" style="margin-top:12px;font-size:13px;padding:8px 12px;background:var(--gray-50);border-radius:6px;color:var(--gray-600)"></div>
@@ -1198,87 +1198,44 @@ let longPressTimer = null;
 
 const STORAGE_KEY = 'woodberries-custom-labels';
 const OVERRIDE_KEY = 'woodberries-label-overrides';
-const TOKEN_KEY = 'woodberries-github-token';
-const GITHUB_REPO = 'gojiemon/fruit-label-printer';
-const GITHUB_FILE = 'custom-labels.json';
+const GAS_URL_KEY = 'woodberries-gas-url';
 
-// ── GitHub Sync ──
-let githubFileSha = null;
-
-function getToken() {
-  return localStorage.getItem(TOKEN_KEY) || '';
+// ── Google Apps Script Sync ──
+function getGasUrl() {
+  return localStorage.getItem(GAS_URL_KEY) || '';
 }
 
 async function fetchSharedData() {
+  const url = getGasUrl();
+  if (!url) return null;
   try {
-    // Try raw.githubusercontent.com first (fast, no auth, cached up to 5min)
-    const url = 'https://raw.githubusercontent.com/' + GITHUB_REPO + '/master/' + GITHUB_FILE + '?t=' + Date.now();
     const res = await fetch(url);
     if (!res.ok) return null;
-    const data = await res.json();
-    // Also fetch SHA for future updates
-    fetchFileSha();
-    return data;
+    return await res.json();
   } catch(e) {
-    console.warn('Failed to fetch shared data:', e);
+    console.warn('共有データ取得失敗:', e);
     return null;
   }
 }
 
-async function fetchFileSha() {
-  try {
-    const token = getToken();
-    const headers = token ? { 'Authorization': 'token ' + token } : {};
-    const res = await fetch('https://api.github.com/repos/' + GITHUB_REPO + '/contents/' + GITHUB_FILE, { headers });
-    if (res.ok) {
-      const data = await res.json();
-      githubFileSha = data.sha;
-    }
-  } catch(e) {}
-}
-
 async function pushSharedData(data) {
-  const token = getToken();
-  if (!token) {
-    alert('データを共有するにはGitHub Tokenが必要です。\n右上の ⚙ ボタンから設定してください。');
-    return false;
-  }
+  const url = getGasUrl();
+  if (!url) return false;
   try {
-    // Get latest SHA
-    const shaRes = await fetch('https://api.github.com/repos/' + GITHUB_REPO + '/contents/' + GITHUB_FILE, {
-      headers: { 'Authorization': 'token ' + token }
-    });
-    if (shaRes.ok) {
-      const shaData = await shaRes.json();
-      githubFileSha = shaData.sha;
-    }
-
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
-    const body = {
-      message: 'ラベルデータ更新',
-      content: content,
-      sha: githubFileSha
-    };
-    const res = await fetch('https://api.github.com/repos/' + GITHUB_REPO + '/contents/' + GITHUB_FILE, {
-      method: 'PUT',
-      headers: {
-        'Authorization': 'token ' + token,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(data)
     });
     if (res.ok) {
       const result = await res.json();
-      githubFileSha = result.content.sha;
-      return true;
+      return result.success === true;
     } else {
-      const err = await res.json();
-      console.error('GitHub push failed:', err);
-      alert('保存に失敗しました: ' + (err.message || res.status));
+      alert('保存に失敗しました');
       return false;
     }
   } catch(e) {
-    console.error('Push error:', e);
+    console.error('保存エラー:', e);
     alert('保存に失敗しました: ' + e.message);
     return false;
   }
@@ -2270,25 +2227,25 @@ document.addEventListener('click', (e) => {
 
 // Settings modal
 document.getElementById('btn-settings').addEventListener('click', () => {
-  document.getElementById('set-token').value = getToken();
+  document.getElementById('set-gas-url').value = getGasUrl();
   const status = document.getElementById('sync-status');
-  status.textContent = getToken() ? '✓ トークン設定済み（データ共有が有効）' : 'トークン未設定（閲覧のみ）';
-  status.style.color = getToken() ? 'var(--green)' : 'var(--gray-500)';
+  status.textContent = getGasUrl() ? '✓ 共有URL設定済み（データ共有が有効）' : 'URL未設定（ローカル保存のみ）';
+  status.style.color = getGasUrl() ? 'var(--green)' : 'var(--gray-500)';
   document.getElementById('settings-modal').classList.add('open');
 });
 document.getElementById('set-close').addEventListener('click', () => {
   document.getElementById('settings-modal').classList.remove('open');
 });
 document.getElementById('set-save').addEventListener('click', () => {
-  const token = document.getElementById('set-token').value.trim();
-  if (token) {
-    localStorage.setItem(TOKEN_KEY, token);
+  const url = document.getElementById('set-gas-url').value.trim();
+  if (url) {
+    localStorage.setItem(GAS_URL_KEY, url);
   } else {
-    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(GAS_URL_KEY);
   }
   document.getElementById('settings-modal').classList.remove('open');
-  // Sync after saving token
-  if (token) {
+  // Sync after saving URL
+  if (url) {
     fetchSharedData().then(data => { if (data) applySharedData(data); });
   }
 });
