@@ -559,6 +559,9 @@ body {
     font-size: 13px;
     flex-shrink: 0;
   }
+  #btn-settings {
+    padding: 9px 12px !important;
+  }
   #tab-bar {
     padding: 8px 12px;
     gap: 6px;
@@ -632,6 +635,7 @@ body {
 
   /* Edit modal fields */
   .edit-field input[type=text],
+  .edit-field input[type=password],
   .edit-field select {
     font-size: 16px; /* prevent iOS zoom */
     padding: 9px 10px;
@@ -658,6 +662,7 @@ body {
     <button id="search-clear" type="button">×</button>
   </div>
   <button id="btn-new-label">＋ 新規作成</button>
+  <button id="btn-settings" style="padding:7px 10px;background:var(--gray-100);border:1px solid var(--gray-200);border-radius:6px;cursor:pointer;font-size:16px;line-height:1" title="設定">⚙</button>
 </div>
 
 <!-- ═══ Category Tabs ═══ -->
@@ -771,6 +776,26 @@ body {
 <div id="context-menu">
   <div class="ctx-item" id="ctx-edit">編集</div>
   <div class="ctx-item danger" id="ctx-delete" style="display:none">削除</div>
+</div>
+
+<!-- ═══ Settings Modal ═══ -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal-box" style="width:480px">
+    <h3 style="font-size:17px;margin-bottom:16px;font-weight:600">設定</h3>
+    <div class="edit-field">
+      <label>GitHub Token <span class="optional-tag">(データ共有に必要)</span></label>
+      <input type="password" id="set-token" style="width:100%;padding:7px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:14px;font-family:monospace" placeholder="ghp_xxxx...">
+      <div style="font-size:11px;color:var(--gray-500);margin-top:4px;line-height:1.5">
+        新規作成・編集を保存するために必要です。<br>
+        <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=fruit-label-printer" target="_blank" style="color:var(--blue)">こちらからトークンを作成</a>（public_repo にチェック → Generate token）
+      </div>
+    </div>
+    <div id="sync-status" style="margin-top:12px;font-size:13px;padding:8px 12px;background:var(--gray-50);border-radius:6px;color:var(--gray-600)"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="set-close">閉じる</button>
+      <button class="btn btn-primary" id="set-save">保存</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ Print Area ═══ -->
@@ -1124,11 +1149,114 @@ let longPressTimer = null;
 
 const STORAGE_KEY = 'woodberries-custom-labels';
 const OVERRIDE_KEY = 'woodberries-label-overrides';
+const TOKEN_KEY = 'woodberries-github-token';
+const GITHUB_REPO = 'gojiemon/fruit-label-printer';
+const GITHUB_FILE = 'custom-labels.json';
+
+// ── GitHub Sync ──
+let githubFileSha = null;
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY) || '';
+}
+
+async function fetchSharedData() {
+  try {
+    // Try raw.githubusercontent.com first (fast, no auth, cached up to 5min)
+    const url = 'https://raw.githubusercontent.com/' + GITHUB_REPO + '/master/' + GITHUB_FILE + '?t=' + Date.now();
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    // Also fetch SHA for future updates
+    fetchFileSha();
+    return data;
+  } catch(e) {
+    console.warn('Failed to fetch shared data:', e);
+    return null;
+  }
+}
+
+async function fetchFileSha() {
+  try {
+    const token = getToken();
+    const headers = token ? { 'Authorization': 'token ' + token } : {};
+    const res = await fetch('https://api.github.com/repos/' + GITHUB_REPO + '/contents/' + GITHUB_FILE, { headers });
+    if (res.ok) {
+      const data = await res.json();
+      githubFileSha = data.sha;
+    }
+  } catch(e) {}
+}
+
+async function pushSharedData(data) {
+  const token = getToken();
+  if (!token) {
+    alert('データを共有するにはGitHub Tokenが必要です。\n右上の ⚙ ボタンから設定してください。');
+    return false;
+  }
+  try {
+    // Get latest SHA
+    const shaRes = await fetch('https://api.github.com/repos/' + GITHUB_REPO + '/contents/' + GITHUB_FILE, {
+      headers: { 'Authorization': 'token ' + token }
+    });
+    if (shaRes.ok) {
+      const shaData = await shaRes.json();
+      githubFileSha = shaData.sha;
+    }
+
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+    const body = {
+      message: 'ラベルデータ更新',
+      content: content,
+      sha: githubFileSha
+    };
+    const res = await fetch('https://api.github.com/repos/' + GITHUB_REPO + '/contents/' + GITHUB_FILE, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'token ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      const result = await res.json();
+      githubFileSha = result.content.sha;
+      return true;
+    } else {
+      const err = await res.json();
+      console.error('GitHub push failed:', err);
+      alert('保存に失敗しました: ' + (err.message || res.status));
+      return false;
+    }
+  } catch(e) {
+    console.error('Push error:', e);
+    alert('保存に失敗しました: ' + e.message);
+    return false;
+  }
+}
+
+function getSharedPayload() {
+  const custom = allLabels.filter(lb => lb._custom);
+  const overrides = {};
+  allLabels.forEach((lb, i) => {
+    if (lb._overridden) {
+      const orig = LABELS[i];
+      if (orig) {
+        const ov = {};
+        for (const k of ['texts','font','size','color','border','borderColor','bold','_category','image']) {
+          if (JSON.stringify(lb[k]) !== JSON.stringify(orig[k])) ov[k] = lb[k];
+        }
+        if (Object.keys(ov).length) overrides[i] = ov;
+      }
+    }
+  });
+  return { customLabels: custom, overrides: overrides };
+}
 
 function loadData() {
   allLabels = LABELS.map(lb => Object.assign({}, lb, { _builtin: true }));
 
-  // Load overrides for built-in labels
+  // Load from localStorage as cache first
   try {
     const overrides = JSON.parse(localStorage.getItem(OVERRIDE_KEY) || '{}');
     for (const [idx, ov] of Object.entries(overrides)) {
@@ -1138,8 +1266,6 @@ function loadData() {
       }
     }
   } catch(e) {}
-
-  // Load custom labels
   try {
     const custom = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
     for (const lb of custom) {
@@ -1149,12 +1275,48 @@ function loadData() {
   } catch(e) {}
 }
 
-function saveCustomLabels() {
-  const custom = allLabels.filter(lb => lb._custom);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(custom));
+function applySharedData(data) {
+  if (!data) return;
+  // Rebuild from LABELS + shared data
+  allLabels = LABELS.map(lb => Object.assign({}, lb, { _builtin: true }));
+  // Apply overrides
+  if (data.overrides) {
+    for (const [idx, ov] of Object.entries(data.overrides)) {
+      const i = parseInt(idx);
+      if (i >= 0 && i < allLabels.length) {
+        Object.assign(allLabels[i], ov, { _builtin: true, _overridden: true });
+      }
+    }
+  }
+  // Apply custom labels
+  if (data.customLabels) {
+    for (const lb of data.customLabels) {
+      lb._custom = true;
+      allLabels.push(lb);
+    }
+  }
+  // Update localStorage cache
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data.customLabels || []));
+  localStorage.setItem(OVERRIDE_KEY, JSON.stringify(data.overrides || {}));
+  // Re-apply auto colors
+  allLabels.forEach(lb => {
+    if (lb.texts.length > 0 && !lb._custom && !lb._overridden) {
+      const fc = fruitAutoColor(lb.texts.join(' '));
+      lb.color = fc;
+      if (lb.border) lb.borderColor = fc;
+    }
+  });
+  renderTabs();
+  renderGrid();
 }
 
-function saveOverrides() {
+async function saveCustomLabels() {
+  const custom = allLabels.filter(lb => lb._custom);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(custom));
+  await pushSharedData(getSharedPayload());
+}
+
+async function saveOverrides() {
   const overrides = {};
   allLabels.forEach((lb, i) => {
     if (lb._overridden) {
@@ -1169,6 +1331,7 @@ function saveOverrides() {
     }
   });
   localStorage.setItem(OVERRIDE_KEY, JSON.stringify(overrides));
+  await pushSharedData(getSharedPayload());
 }
 
 // ━━━━━━━━━━ CATEGORY TABS ━━━━━━━━━━
@@ -1924,11 +2087,42 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// Settings modal
+document.getElementById('btn-settings').addEventListener('click', () => {
+  document.getElementById('set-token').value = getToken();
+  const status = document.getElementById('sync-status');
+  status.textContent = getToken() ? '✓ トークン設定済み（データ共有が有効）' : 'トークン未設定（閲覧のみ）';
+  status.style.color = getToken() ? 'var(--green)' : 'var(--gray-500)';
+  document.getElementById('settings-modal').classList.add('open');
+});
+document.getElementById('set-close').addEventListener('click', () => {
+  document.getElementById('settings-modal').classList.remove('open');
+});
+document.getElementById('set-save').addEventListener('click', () => {
+  const token = document.getElementById('set-token').value.trim();
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+  }
+  document.getElementById('settings-modal').classList.remove('open');
+  // Sync after saving token
+  if (token) {
+    fetchSharedData().then(data => { if (data) applySharedData(data); });
+  }
+});
+document.getElementById('settings-modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('settings-modal')) {
+    document.getElementById('settings-modal').classList.remove('open');
+  }
+});
+
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     closePrintModal();
     closeEditModal();
     hideContextMenu();
+    document.getElementById('settings-modal').classList.remove('open');
   }
 });
 
@@ -1937,6 +2131,13 @@ loadData();
 populateCategoryDropdown();
 renderTabs();
 renderGrid();
+
+// Load shared data from GitHub (async, updates UI when ready)
+fetchSharedData().then(data => {
+  if (data && (data.customLabels.length > 0 || Object.keys(data.overrides).length > 0)) {
+    applySharedData(data);
+  }
+});
 </script>
 </body>
 </html>
