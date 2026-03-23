@@ -745,6 +745,11 @@ body {
       <button class="btn btn-secondary" id="pm-close">閉じる</button>
       <button class="btn btn-print" id="pm-print">PDF作成 → 印刷</button>
     </div>
+    <div id="pdf-result" style="display:none;margin-top:16px;padding:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;text-align:center">
+      <p style="font-size:14px;color:#166534;margin-bottom:12px;font-weight:600">✓ PDF作成完了</p>
+      <a id="pdf-download-link" href="#" target="_blank" style="display:inline-block;padding:14px 32px;background:#16a34a;color:#fff;border-radius:8px;font-size:16px;font-weight:700;text-decoration:none">PDFを開いて印刷</a>
+      <p style="font-size:12px;color:#4b5563;margin-top:10px">開いたPDFを「実際のサイズ (100%)」で印刷してください</p>
+    </div>
   </div>
 </div>
 
@@ -1640,6 +1645,12 @@ function renderPrintPreview(lb, text, paperType) {
 
 function closePrintModal() {
   document.getElementById('print-modal').classList.remove('open');
+  document.getElementById('pdf-result').style.display = 'none';
+  document.getElementById('pm-print').disabled = false;
+  document.getElementById('pm-print').textContent = 'PDF作成 → 印刷';
+  // Revoke old blob URL
+  const link = document.getElementById('pdf-download-link');
+  if (link._blobUrl) { URL.revokeObjectURL(link._blobUrl); link._blobUrl = null; }
   currentPrintLabel = null;
 }
 
@@ -1718,8 +1729,18 @@ function doPrint() {
     for (let j = 0; j < numCopies; j++) printQueue.push(text);
   }
 
-  closePrintModal();
+  // Show loading state
+  const printBtn = document.getElementById('pm-print');
+  printBtn.disabled = true;
+  printBtn.textContent = 'PDF作成中...';
+  document.getElementById('pdf-result').style.display = 'none';
 
+  // Use setTimeout to let UI update before heavy canvas work
+  setTimeout(() => { generatePDF(lb, paper, printQueue); }, 50);
+}
+
+function generatePDF(lb, paper, printQueue) {
+  try {
   // ── Generate PDF using Canvas ──
   const DPI = 3;  // scale factor for sharp rendering
   const A4W = 210, A4H = 297; // mm
@@ -1792,9 +1813,25 @@ function doPrint() {
   const imgData = canvas.toDataURL('image/png');
   pdf.addImage(imgData, 'PNG', 0, 0, A4W, A4H, undefined, 'FAST');
 
-  // Open PDF for printing
-  const blobUrl = pdf.output('bloburl');
-  window.open(blobUrl, '_blank');
+  // Show download link in modal
+  const blob = pdf.output('blob');
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.getElementById('pdf-download-link');
+  // Revoke old URL
+  if (link._blobUrl) URL.revokeObjectURL(link._blobUrl);
+  link.href = blobUrl;
+  link._blobUrl = blobUrl;
+  document.getElementById('pdf-result').style.display = 'block';
+  document.getElementById('pm-print').textContent = '✓ 作成完了';
+
+  // Scroll to the download link
+  document.getElementById('pdf-result').scrollIntoView({ behavior: 'smooth' });
+
+  } catch(e) {
+    alert('PDF作成に失敗しました: ' + e.message);
+    document.getElementById('pm-print').disabled = false;
+    document.getElementById('pm-print').textContent = 'PDF作成 → 印刷';
+  }
 }
 
 // ━━━━━━━━━━ NEW / EDIT LABEL MODAL ━━━━━━━━━━
