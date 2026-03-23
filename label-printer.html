@@ -805,12 +805,6 @@ body {
       <div class="color-swatches" id="em-colors"></div>
     </div>
     <div class="edit-field">
-      <label class="checkbox-label">
-        <input type="checkbox" id="em-border" checked>
-        枠線あり
-      </label>
-    </div>
-    <div class="edit-field">
       <label>カテゴリ</label>
       <select id="em-category"></select>
     </div>
@@ -824,7 +818,8 @@ body {
 <!-- ═══ Context Menu ═══ -->
 <div id="context-menu">
   <div class="ctx-item" id="ctx-edit">編集</div>
-  <div class="ctx-item danger" id="ctx-delete" style="display:none">削除</div>
+  <div class="ctx-item" id="ctx-hide">非表示にする</div>
+  <div class="ctx-item danger" id="ctx-delete" style="display:none">完全に削除</div>
 </div>
 
 <!-- ═══ Settings Modal ═══ -->
@@ -840,6 +835,11 @@ body {
       </div>
     </div>
     <div id="sync-status" style="margin-top:12px;font-size:13px;padding:8px 12px;background:var(--gray-50);border-radius:6px;color:var(--gray-600)"></div>
+    <div id="hidden-labels-section" style="display:none;margin-top:16px">
+      <label style="font-size:13px;font-weight:600;color:var(--gray-700)">非表示にしたラベル</label>
+      <div id="hidden-labels-list" style="margin-top:8px;max-height:200px;overflow-y:auto"></div>
+      <button type="button" id="set-restore-all" class="btn btn-secondary" style="margin-top:8px;font-size:12px;width:100%">すべて復元</button>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="set-close">閉じる</button>
       <button class="btn btn-primary" id="set-save">保存</button>
@@ -1198,7 +1198,9 @@ let longPressTimer = null;
 
 const STORAGE_KEY = 'woodberries-custom-labels';
 const OVERRIDE_KEY = 'woodberries-label-overrides';
+const HIDDEN_KEY = 'woodberries-hidden-labels';
 const GAS_URL_KEY = 'woodberries-gas-url';
+let hiddenPaths = new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'));
 const GAS_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbwukLz8Q3lBfm3FwTfEDrHmYpJaM0owxQKaVGPuceYFy-4vfZGxBWnXKzipOCsVKDnE/exec';
 
 // ── Google Apps Script Sync ──
@@ -1242,8 +1244,13 @@ async function pushSharedData(data) {
   }
 }
 
+function saveHidden() {
+  localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenPaths]));
+  pushSharedData(getSharedPayload());
+}
+
 function getSharedPayload() {
-  const custom = allLabels.filter(lb => lb._custom);
+  const custom = allLabels.filter(lb => lb._custom && !hiddenPaths.has(lb.path));
   const overrides = {};
   allLabels.forEach((lb, i) => {
     if (lb._overridden) {
@@ -1257,7 +1264,7 @@ function getSharedPayload() {
       }
     }
   });
-  return { customLabels: custom, overrides: overrides };
+  return { customLabels: custom, overrides: overrides, hiddenPaths: [...hiddenPaths] };
 }
 
 function loadData() {
@@ -1302,6 +1309,11 @@ function applySharedData(data) {
       allLabels.push(lb);
     }
   }
+  // Apply hidden paths
+  if (data.hiddenPaths) {
+    hiddenPaths = new Set(data.hiddenPaths);
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify(data.hiddenPaths));
+  }
   // Update localStorage cache
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data.customLabels || []));
   localStorage.setItem(OVERRIDE_KEY, JSON.stringify(data.overrides || {}));
@@ -1343,8 +1355,9 @@ async function saveOverrides() {
 
 // ━━━━━━━━━━ CATEGORY TABS ━━━━━━━━━━
 function countForCat(catId) {
-  if (catId === 'すべて') return allLabels.length;
-  return allLabels.filter(lb => getCategory(lb) === catId).length;
+  const visible = allLabels.filter(lb => !hiddenPaths.has(lb.path));
+  if (catId === 'すべて') return visible.length;
+  return visible.filter(lb => getCategory(lb) === catId).length;
 }
 
 function renderTabs() {
@@ -1372,7 +1385,7 @@ function renderTabs() {
 
 // ━━━━━━━━━━ LABEL GRID ━━━━━━━━━━
 function getFilteredLabels() {
-  let list = allLabels;
+  let list = allLabels.filter(lb => !hiddenPaths.has(lb.path));
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
     list = list.filter(lb => {
@@ -1482,6 +1495,7 @@ function showContextMenu(x, y, lb) {
 
   // Show delete only for custom labels
   delBtn.style.display = lb._custom ? 'block' : 'none';
+  document.getElementById('ctx-hide').textContent = '非表示にする';
 
   menu.style.display = 'block';
   // Position, keeping in viewport
@@ -1914,7 +1928,6 @@ function openEditModal(lb, lbIndex) {
     const pt = detectPaper(lb.code);
     document.querySelectorAll('input[name="em-paper"]').forEach(r => r.checked = r.value === pt);
     editColor = decToHex(lb.color);
-    document.getElementById('em-border').checked = lb.border;
     // Category
     const cat = getCategory(lb);
     document.getElementById('em-category').value = cat;
@@ -1959,7 +1972,6 @@ function openEditModal(lb, lbIndex) {
     document.getElementById('em-region').value = '';
     document.querySelectorAll('input[name="em-paper"]').forEach(r => r.checked = r.value === 'small');
     editColor = '#FF9900';
-    document.getElementById('em-border').checked = true;
     document.getElementById('em-category').value = 'その他果物';
     editImageData = null;
     document.getElementById('em-img-file').value = '';
@@ -2027,14 +2039,13 @@ function buildLabelText() {
 
 function updateEditPreview() {
   const text = buildLabelText() || '(プレビュー)';
-  const hasBorder = document.getElementById('em-border').checked;
   const paperType = document.querySelector('input[name="em-paper"]:checked').value;
   const paper = PAPERS[paperType];
   const scale = paperType === 'large' ? 2.5 : 3.5;
   const w = paper.labelW * scale;
   const h = paper.labelH * scale;
   const displayText = text.replace(/\n/g, '<br>');
-  const borderStyle = hasBorder ? 'border:2px solid ' + editColor + ';' : 'border:1px solid #e0e0e0;';
+  const borderStyle = 'border:1px solid #e0e0e0;';
 
   let previewContent = '';
   if (editImageData) {
@@ -2068,7 +2079,6 @@ function saveLabel() {
   const text = buildLabelText();
   const paperType = document.querySelector('input[name="em-paper"]:checked').value;
   const code = paperType === 'large' ? '28916' : '63295';
-  const hasBorder = document.getElementById('em-border').checked;
   const category = document.getElementById('em-category').value;
   const colorDec = hexToDecColor(editColor);
 
@@ -2078,8 +2088,8 @@ function saveLabel() {
     lb.texts = [text];
     lb.code = code;
     lb.color = colorDec;
-    lb.border = hasBorder;
-    lb.borderColor = hasBorder ? colorDec : 0;
+    lb.border = false;
+    lb.borderColor = 0;
     lb._category = category;
     if (editImageData) {
       lb.image = editImageData;
@@ -2108,8 +2118,8 @@ function saveLabel() {
       font: 'コーポレートやわ明 Medium',
       size: 11.3,
       color: finalColor,
-      border: hasBorder,
-      borderColor: hasBorder ? finalColor : 0,
+      border: false,
+      borderColor: 0,
       bold: false,
       _custom: true,
       _category: category
@@ -2175,7 +2185,6 @@ document.getElementById('edit-modal').addEventListener('click', (e) => {
 ['em-fruit', 'em-farm', 'em-region'].forEach(id => {
   document.getElementById(id).addEventListener('input', updateEditPreview);
 });
-document.getElementById('em-border').addEventListener('change', updateEditPreview);
 document.querySelectorAll('input[name="em-paper"]').forEach(r => {
   r.addEventListener('change', updateEditPreview);
 });
@@ -2215,9 +2224,18 @@ document.getElementById('ctx-edit').addEventListener('click', () => {
   }
   hideContextMenu();
 });
+document.getElementById('ctx-hide').addEventListener('click', () => {
+  if (contextTarget) {
+    hiddenPaths.add(contextTarget.path);
+    saveHidden();
+    renderTabs();
+    renderGrid();
+  }
+  hideContextMenu();
+});
 document.getElementById('ctx-delete').addEventListener('click', () => {
   if (contextTarget && contextTarget._custom) {
-    if (confirm('このラベルを削除しますか？')) {
+    if (confirm('このラベルを完全に削除しますか？\n（復元できません）')) {
       const idx = allLabels.indexOf(contextTarget);
       if (idx >= 0) allLabels.splice(idx, 1);
       saveCustomLabels();
@@ -2235,11 +2253,47 @@ document.addEventListener('click', (e) => {
 });
 
 // Settings modal
+function renderHiddenLabelsList() {
+  const section = document.getElementById('hidden-labels-section');
+  const list = document.getElementById('hidden-labels-list');
+  if (hiddenPaths.size === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  list.innerHTML = '';
+  [...hiddenPaths].forEach(path => {
+    const name = path.split('/').pop();
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:6px;margin-bottom:4px;font-size:13px';
+    row.innerHTML = '<span style="color:var(--gray-700)">' + name + '</span>';
+    const btn = document.createElement('button');
+    btn.textContent = '復元';
+    btn.style.cssText = 'font-size:12px;padding:2px 10px;border:1px solid var(--blue);color:var(--blue);background:#fff;border-radius:4px;cursor:pointer';
+    btn.addEventListener('click', () => {
+      hiddenPaths.delete(path);
+      saveHidden();
+      renderHiddenLabelsList();
+      renderTabs();
+      renderGrid();
+    });
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
+}
+document.getElementById('set-restore-all').addEventListener('click', () => {
+  hiddenPaths.clear();
+  saveHidden();
+  renderHiddenLabelsList();
+  renderTabs();
+  renderGrid();
+});
 document.getElementById('btn-settings').addEventListener('click', () => {
   document.getElementById('set-gas-url').value = getGasUrl();
   const status = document.getElementById('sync-status');
   status.textContent = getGasUrl() ? '✓ 共有URL設定済み（データ共有が有効）' : 'URL未設定（ローカル保存のみ）';
   status.style.color = getGasUrl() ? 'var(--green)' : 'var(--gray-500)';
+  renderHiddenLabelsList();
   document.getElementById('settings-modal').classList.add('open');
 });
 document.getElementById('set-close').addEventListener('click', () => {
