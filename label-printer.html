@@ -1689,6 +1689,33 @@ function updateTotalInfo() {
   }
 }
 
+// ━━━━━━━━━━ WEB FONT LOADER ━━━━━━━━━━
+let _fontLoaded = false;
+function ensureFontLoaded() {
+  if (_fontLoaded) return Promise.resolve();
+  return new Promise(resolve => {
+    try {
+      const face = new FontFace(
+        'コーポレートやわ明 Medium',
+        'url(Corporate-Yawamin-ver3.otf)'
+      );
+      face.load().then(loaded => {
+        document.fonts.add(loaded);
+        _fontLoaded = true;
+        resolve();
+      }).catch(err => {
+        console.warn('Font load failed:', err);
+        resolve(); // proceed with fallback
+      });
+    } catch(e) {
+      console.warn('FontFace API not supported:', e);
+      resolve();
+    }
+  });
+}
+// Pre-load font on page load (so it's ready when user taps print)
+ensureFontLoaded();
+
 // ━━━━━━━━━━ PRINT (Canvas → JPEG → PDF, no external libs) ━━━━━━━━━━
 
 // Render labels on a Canvas, embed the JPEG image into a hand-built PDF.
@@ -1839,12 +1866,9 @@ function doPrint() {
   printBtn.textContent = 'PDF作成中...';
   document.getElementById('pdf-result').style.display = 'none';
 
-  // Wait for web font to be loaded before canvas rendering
-  document.fonts.load('12px "コーポレートやわ明 Medium"').then(() => {
-    setTimeout(() => { generatePDF(lb, paper, printQueue); }, 50);
-  }).catch(() => {
-    // Font load failed, proceed anyway with fallback font
-    setTimeout(() => { generatePDF(lb, paper, printQueue); }, 50);
+  // Explicitly load web font via FontFace API, then render
+  ensureFontLoaded().then(() => {
+    setTimeout(() => { generatePDF(lb, paper, printQueue); }, 100);
   });
 }
 
