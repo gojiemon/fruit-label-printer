@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ウッドベリーズ ラベル印刷</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1683,23 +1682,142 @@ function updateTotalInfo() {
   }
 }
 
-// ━━━━━━━━━━ PRINT (PDF Generation) ━━━━━━━━━━
-// mm to PDF points (1mm = 72/25.4 pt)
+// ━━━━━━━━━━ PRINT (PDF Generation — no external libraries) ━━━━━━━━━━
 function mmToPt(mm) { return mm * 72 / 25.4; }
 
-// Canvas for PDF text measurement
-const _pdfMeasureCanvas = document.createElement('canvas').getContext('2d');
-
-function pdfMeasureText(text, fontSizePt, bold) {
-  const px = fontSizePt * 1.333;
-  _pdfMeasureCanvas.font = (bold ? 'bold ' : '') + px + 'px "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif';
-  const lines = text.split('\n');
-  let maxW = 0;
-  for (const line of lines) {
-    const w = _pdfMeasureCanvas.measureText(line).width;
-    if (w > maxW) maxW = w;
+// Estimate text width in pt (CJK = full-width, ASCII ≈ half)
+function estimateTextWidthPt(text, fontSizePt) {
+  let w = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    w += (c > 0x7F) ? fontSizePt : fontSizePt * 0.55;
   }
-  return { width: maxW, height: lines.length * px * 1.3 };
+  return w;
+}
+
+// UTF-16BE hex string for PDF
+function utf16beHex(str) {
+  let hex = 'FEFF';
+  for (let i = 0; i < str.length; i++) {
+    hex += ('0000' + str.charCodeAt(i).toString(16).toUpperCase()).slice(-4);
+  }
+  return '<' + hex + '>';
+}
+
+// Parse hex color to PDF rgb values (0-1)
+function hexToRgb01(hex) {
+  if (!hex || hex === '#000000') return '0 0 0';
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16) / 255;
+  const g = parseInt(h.substring(2, 4), 16) / 255;
+  const b = parseInt(h.substring(4, 6), 16) / 255;
+  return r.toFixed(3) + ' ' + g.toFixed(3) + ' ' + b.toFixed(3);
+}
+
+// Build a complete PDF file as a Blob (no external libraries)
+function buildPDFBlob(labelItems) {
+  // labelItems = [{ text, xMm, yMm, wMm, hMm, fontSizePt, colorHex, bold }]
+  const A4W = mmToPt(210), A4H = mmToPt(297);
+  const objects = [];
+  function addObj(content) { objects.push(content); return objects.length; }
+
+  // Font objects — CIDFont + Type0 for Japanese
+  const cidMincho = addObj(
+    '<< /Type /Font /Subtype /CIDFontType0\n' +
+    '   /BaseFont /KozMinPr6N-Regular\n' +
+    '   /CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 6 >>\n' +
+    '   /DW 1000 >>'
+  );
+  const fontMincho = addObj(
+    '<< /Type /Font /Subtype /Type0\n' +
+    '   /BaseFont /KozMinPr6N-Regular\n' +
+    '   /Encoding /Identity-H\n' +
+    '   /DescendantFonts [' + cidMincho + ' 0 R] >>'
+  );
+  const cidGothic = addObj(
+    '<< /Type /Font /Subtype /CIDFontType0\n' +
+    '   /BaseFont /KozGoPr6N-Medium\n' +
+    '   /CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 6 >>\n' +
+    '   /DW 1000 >>'
+  );
+  const fontGothic = addObj(
+    '<< /Type /Font /Subtype /Type0\n' +
+    '   /BaseFont /KozGoPr6N-Medium\n' +
+    '   /Encoding /Identity-H\n' +
+    '   /DescendantFonts [' + cidGothic + ' 0 R] >>'
+  );
+
+  // Build content stream — draw each label
+  let stream = '';
+  for (const item of labelItems) {
+    const lines = item.text.split('\n');
+    const fs = item.fontSizePt;
+    const lineH = fs * 1.3;
+    const totalH = lines.length * lineH;
+    const rgb = hexToRgb01(item.colorHex);
+    const fontRef = item.bold ? '/F2' : '/F1';
+
+    // Vertical center within the label cell
+    const cellCenterY = item.yMm + item.hMm / 2;
+    const blockTopMm = cellCenterY - (totalH / mmToPt(1)) / 2;
+
+    // Stroke for bolder text
+    stream += rgb + ' rg ' + rgb + ' RG\n';
+    stream += '2 Tr 0.3 w\n'; // stroke+fill mode, thin stroke
+
+    for (let li = 0; li < lines.length; li++) {
+      const line = lines[li].trim();
+      if (!line) continue;
+      // Horizontal center
+      const textW = estimateTextWidthPt(line, fs);
+      const cellCenterX = item.xMm + item.wMm / 2;
+      const pdfX = mmToPt(cellCenterX) - textW / 2;
+      const lineMm = blockTopMm + (li * lineH + lineH * 0.75) / mmToPt(1);
+      const pdfY = A4H - mmToPt(lineMm);
+
+      stream += 'BT ' + fontRef + ' ' + fs.toFixed(1) + ' Tf ';
+      stream += pdfX.toFixed(2) + ' ' + pdfY.toFixed(2) + ' Td ';
+      stream += utf16beHex(line) + ' Tj ET\n';
+    }
+    stream += '0 Tr\n'; // reset render mode
+  }
+
+  const streamBytes = new TextEncoder().encode(stream);
+  const contentObj = addObj(
+    '<< /Length ' + streamBytes.length + ' >>\nstream\n' + stream + 'endstream'
+  );
+  const resources = addObj(
+    '<< /Font << /F1 ' + fontMincho + ' 0 R /F2 ' + fontGothic + ' 0 R >> >>'
+  );
+  const page = addObj(
+    '<< /Type /Page /Parent PAGES_REF\n' +
+    '   /MediaBox [0 0 ' + A4W.toFixed(2) + ' ' + A4H.toFixed(2) + ']\n' +
+    '   /Contents ' + contentObj + ' 0 R /Resources ' + resources + ' 0 R >>'
+  );
+  const pages = addObj(
+    '<< /Type /Pages /Kids [' + page + ' 0 R] /Count 1 >>'
+  );
+  objects[page - 1] = objects[page - 1].replace('PAGES_REF', pages + ' 0 R');
+  const catalog = addObj('<< /Type /Catalog /Pages ' + pages + ' 0 R >>');
+
+  // Serialize PDF
+  let pdf = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
+  const offsets = [];
+  for (let i = 0; i < objects.length; i++) {
+    offsets.push(pdf.length);
+    pdf += (i + 1) + ' 0 obj\n' + objects[i] + '\nendobj\n';
+  }
+  const xrefOff = pdf.length;
+  pdf += 'xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n';
+  for (const off of offsets) {
+    pdf += ('0000000000' + off).slice(-10) + ' 00000 n \n';
+  }
+  pdf += 'trailer\n<< /Size ' + (objects.length + 1) + ' /Root ' + catalog + ' 0 R >>\n';
+  pdf += 'startxref\n' + xrefOff + '\n%%EOF';
+
+  const bytes = new Uint8Array(pdf.length);
+  for (let i = 0; i < pdf.length; i++) bytes[i] = pdf.charCodeAt(i) & 0xFF;
+  return new Blob([bytes], { type: 'application/pdf' });
 }
 
 function doPrint() {
@@ -1715,10 +1833,7 @@ function doPrint() {
       const qty = textQuantities[i] || 0;
       for (let j = 0; j < qty; j++) printQueue.push(t);
     });
-    if (printQueue.length === 0) {
-      alert('枚数を1つ以上指定してください');
-      return;
-    }
+    if (printQueue.length === 0) { alert('枚数を1つ以上指定してください'); return; }
     if (printQueue.length > paper.total) {
       alert('合計が' + paper.total + '枚を超えています（現在' + printQueue.length + '枚）');
       return;
@@ -1735,97 +1850,55 @@ function doPrint() {
   printBtn.textContent = 'PDF作成中...';
   document.getElementById('pdf-result').style.display = 'none';
 
-  // Use setTimeout to let UI update before heavy canvas work
   setTimeout(() => { generatePDF(lb, paper, printQueue); }, 50);
 }
 
 function generatePDF(lb, paper, printQueue) {
   try {
-  // ── Generate PDF using Canvas ──
-  const DPI = 3;  // scale factor for sharp rendering
-  const A4W = 210, A4H = 297; // mm
-  const canvasW = Math.round(mmToPx(A4W) * DPI);
-  const canvasH = Math.round(mmToPx(A4H) * DPI);
+    const textColor = decToHex(lb.color);
+    const fFamily = fontStack(lb.font);
 
-  const canvas = document.createElement('canvas');
-  canvas.width = canvasW;
-  canvas.height = canvasH;
-  const ctx = canvas.getContext('2d');
+    // Build label items for PDF
+    const labelItems = [];
+    let placed = 0;
+    for (let row = 0; row < paper.rows && placed < printQueue.length; row++) {
+      for (let col = 0; col < paper.cols && placed < printQueue.length; col++) {
+        const text = printQueue[placed];
+        const leftMm = paper.marginLeft + col * (paper.labelW + paper.gapH);
+        const topMm = paper.marginTop + row * (paper.labelH + paper.gapV);
 
-  // White background
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvasW, canvasH);
+        // Auto-fit font size
+        const fittedSize = autoFitFontSize(text, paper.labelW, paper.labelH, fFamily, lb.bold, paper.baseFontPt, paper.minFontPt);
+        const origSize = lb.size || paper.baseFontPt;
+        const origMeasure = measureText(text, fFamily, origSize, lb.bold);
+        const maxWpx = mmToPx(paper.labelW - 2);
+        const maxHpx = mmToPx(paper.labelH - 2);
+        const useSize = (origMeasure.width <= maxWpx && origMeasure.height <= maxHpx) ? origSize : fittedSize;
 
-  const textColor = decToHex(lb.color);
-  const fFamily = '"Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "MS PMincho", serif';
-
-  let placed = 0;
-  for (let row = 0; row < paper.rows && placed < printQueue.length; row++) {
-    for (let col = 0; col < paper.cols && placed < printQueue.length; col++) {
-      const text = printQueue[placed];
-      const leftMm = paper.marginLeft + col * (paper.labelW + paper.gapH);
-      const topMm = paper.marginTop + row * (paper.labelH + paper.gapV);
-
-      // Convert to canvas pixels
-      const x = mmToPx(leftMm) * DPI;
-      const y = mmToPx(topMm) * DPI;
-      const w = mmToPx(paper.labelW) * DPI;
-      const h = mmToPx(paper.labelH) * DPI;
-
-      // Auto-fit font size
-      const fittedSize = autoFitFontSize(text, paper.labelW, paper.labelH, fFamily, lb.bold, paper.baseFontPt, paper.minFontPt);
-      const origSize = lb.size || paper.baseFontPt;
-      const origMeasure = measureText(text, fFamily, origSize, lb.bold);
-      const maxWpx = mmToPx(paper.labelW - 2);
-      const maxHpx = mmToPx(paper.labelH - 2);
-      const useSize = (origMeasure.width <= maxWpx && origMeasure.height <= maxHpx) ? origSize : fittedSize;
-
-      const fontSizePx = useSize * 1.333 * DPI;
-      ctx.font = (lb.bold ? 'bold ' : '') + fontSizePx + 'px ' + fFamily;
-      ctx.fillStyle = textColor;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      // Draw text with stroke for bolder appearance
-      ctx.strokeStyle = textColor;
-      ctx.lineWidth = 0.4 * DPI;
-      ctx.lineJoin = 'round';
-
-      const lines = text.split('\n');
-      const lineH = fontSizePx * 1.3;
-      const totalH = lines.length * lineH;
-      const startY = y + (h - totalH) / 2 + lineH / 2;
-      const centerX = x + w / 2;
-
-      for (let li = 0; li < lines.length; li++) {
-        const ly = startY + li * lineH;
-        ctx.strokeText(lines[li], centerX, ly);
-        ctx.fillText(lines[li], centerX, ly);
+        labelItems.push({
+          text: text,
+          xMm: leftMm,
+          yMm: topMm,
+          wMm: paper.labelW,
+          hMm: paper.labelH,
+          fontSizePt: useSize,
+          colorHex: textColor,
+          bold: lb.bold
+        });
+        placed++;
       }
-
-      placed++;
     }
-  }
 
-  // Convert canvas to PDF
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const imgData = canvas.toDataURL('image/png');
-  pdf.addImage(imgData, 'PNG', 0, 0, A4W, A4H, undefined, 'FAST');
-
-  // Show download link in modal
-  const blob = pdf.output('blob');
-  const blobUrl = URL.createObjectURL(blob);
-  const link = document.getElementById('pdf-download-link');
-  // Revoke old URL
-  if (link._blobUrl) URL.revokeObjectURL(link._blobUrl);
-  link.href = blobUrl;
-  link._blobUrl = blobUrl;
-  document.getElementById('pdf-result').style.display = 'block';
-  document.getElementById('pm-print').textContent = '✓ 作成完了';
-
-  // Scroll to the download link
-  document.getElementById('pdf-result').scrollIntoView({ behavior: 'smooth' });
+    // Generate PDF
+    const blob = buildPDFBlob(labelItems);
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.getElementById('pdf-download-link');
+    if (link._blobUrl) URL.revokeObjectURL(link._blobUrl);
+    link.href = blobUrl;
+    link._blobUrl = blobUrl;
+    document.getElementById('pdf-result').style.display = 'block';
+    document.getElementById('pm-print').textContent = '✓ 作成完了';
+    document.getElementById('pdf-result').scrollIntoView({ behavior: 'smooth' });
 
   } catch(e) {
     alert('PDF作成に失敗しました: ' + e.message);
