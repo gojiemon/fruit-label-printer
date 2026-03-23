@@ -531,6 +531,121 @@ body {
   overflow: hidden;
   line-height: 1.25;
 }
+
+/* ── Mobile Responsive ── */
+@media (max-width: 640px) {
+  #app-header {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  #app-header h1 {
+    font-size: 15px;
+    width: 100%;
+    order: -1;
+  }
+  #search-wrap {
+    flex: 1;
+    max-width: none;
+    margin-left: 0;
+    min-width: 0;
+  }
+  #search-box {
+    font-size: 16px; /* prevent iOS zoom on focus */
+    padding: 9px 32px 9px 12px;
+  }
+  #btn-new-label {
+    padding: 9px 14px;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  #tab-bar {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+  .tab-pill {
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+  #main-area {
+    padding: 12px;
+  }
+  #label-grid {
+    gap: 8px;
+  }
+  .label-btn-small {
+    min-width: 100px;
+    max-width: 160px;
+    height: 72px;
+    flex: 1 0 100px;
+  }
+  .label-btn-large {
+    min-width: 140px;
+    max-width: 200px;
+    height: 90px;
+    flex: 1 0 140px;
+  }
+  .label-btn .btn-main-text {
+    font-size: 12px;
+  }
+
+  /* Modals: full screen on mobile */
+  .modal-overlay {
+    align-items: flex-end;
+  }
+  .modal-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92vh;
+    border-radius: 16px 16px 0 0;
+    padding: 20px 16px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+  .form-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .form-row label {
+    width: auto;
+    flex-shrink: 1;
+  }
+  .form-row select,
+  .form-row input[type=number] {
+    font-size: 16px; /* prevent iOS zoom */
+    padding: 8px 10px;
+  }
+  .modal-actions {
+    gap: 8px;
+  }
+  .btn {
+    padding: 12px 20px;
+    font-size: 15px;
+  }
+  .btn-print {
+    flex: 1;
+    padding: 14px 24px;
+    font-size: 16px;
+  }
+  .btn-secondary {
+    padding: 12px 16px;
+  }
+
+  /* Edit modal fields */
+  .edit-field input[type=text],
+  .edit-field select {
+    font-size: 16px; /* prevent iOS zoom */
+    padding: 9px 10px;
+  }
+
+  /* Context menu */
+  #context-menu {
+    min-width: 160px;
+  }
+  #context-menu .ctx-item {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+}
 </style>
 </head>
 <body>
