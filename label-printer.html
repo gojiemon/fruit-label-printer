@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ウッドベリーズ ラベル印刷</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -719,11 +720,10 @@ body {
     <h3 id="pm-title"></h3>
     <div id="print-preview-area"></div>
     <div class="print-note">
-      <strong>印刷設定（重要）:</strong><br>
-      ① 余白: 「なし (None)」に設定<br>
-      ② 倍率: 「100%」（拡大縮小しない）<br>
-      ③ 用紙サイズ: 「A4」<br>
-      <span style="font-size:11px;color:#78350f">※スマホの場合: 印刷プレビューの「その他の設定」→「余白: なし」を確認</span>
+      <strong>印刷方法:</strong><br>
+      ① 「印刷する」をタップするとPDFが開きます<br>
+      ② PDFを「実際のサイズ」で印刷してください<br>
+      <span style="font-size:11px;color:#78350f">※「ページに合わせる」ではなく「実際のサイズ (100%)」を選択</span>
     </div>
     <div id="text-select-area"></div>
     <div class="form-row">
@@ -743,7 +743,7 @@ body {
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="pm-close">閉じる</button>
-      <button class="btn btn-print" id="pm-print">印刷する</button>
+      <button class="btn btn-print" id="pm-print">PDF作成 → 印刷</button>
     </div>
   </div>
 </div>
@@ -1672,7 +1672,25 @@ function updateTotalInfo() {
   }
 }
 
-// ━━━━━━━━━━ PRINT ━━━━━━━━━━
+// ━━━━━━━━━━ PRINT (PDF Generation) ━━━━━━━━━━
+// mm to PDF points (1mm = 72/25.4 pt)
+function mmToPt(mm) { return mm * 72 / 25.4; }
+
+// Canvas for PDF text measurement
+const _pdfMeasureCanvas = document.createElement('canvas').getContext('2d');
+
+function pdfMeasureText(text, fontSizePt, bold) {
+  const px = fontSizePt * 1.333;
+  _pdfMeasureCanvas.font = (bold ? 'bold ' : '') + px + 'px "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", serif';
+  const lines = text.split('\n');
+  let maxW = 0;
+  for (const line of lines) {
+    const w = _pdfMeasureCanvas.measureText(line).width;
+    if (w > maxW) maxW = w;
+  }
+  return { width: maxW, height: lines.length * px * 1.3 };
+}
+
 function doPrint() {
   if (!currentPrintLabel) return;
   const lb = currentPrintLabel;
@@ -1682,7 +1700,6 @@ function doPrint() {
   // Build the list of texts to print with their quantities
   let printQueue = [];
   if (lb.texts.length > 1 && textQuantities.length > 0) {
-    // Multi-text mode: use specified quantities
     lb.texts.forEach((t, i) => {
       const qty = textQuantities[i] || 0;
       for (let j = 0; j < qty; j++) printQueue.push(t);
@@ -1696,74 +1713,88 @@ function doPrint() {
       return;
     }
   } else {
-    // Single-text mode: use pm-count
     const numCopies = Math.min(parseInt(document.getElementById('pm-count').value) || paper.total, paper.total);
     const text = lb.texts[0] || '';
     for (let j = 0; j < numCopies; j++) printQueue.push(text);
   }
-  const numCopies = printQueue.length;
 
-  const sheet = document.getElementById('print-area');
-  sheet.innerHTML = '';
-  sheet.style.cssText = 'width:210mm;height:297mm;position:relative;margin:0;padding:0;box-sizing:border-box;overflow:visible;';
+  closePrintModal();
+
+  // ── Generate PDF using Canvas ──
+  const DPI = 3;  // scale factor for sharp rendering
+  const A4W = 210, A4H = 297; // mm
+  const canvasW = Math.round(mmToPx(A4W) * DPI);
+  const canvasH = Math.round(mmToPx(A4H) * DPI);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  const ctx = canvas.getContext('2d');
+
+  // White background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvasW, canvasH);
 
   const textColor = decToHex(lb.color);
-  const borderColor = decToHex(lb.borderColor);
-  const fFamily = fontStack(lb.font);
+  const fFamily = '"Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "MS PMincho", serif';
 
   let placed = 0;
-  for (let row = 0; row < paper.rows && placed < numCopies; row++) {
-    for (let col = 0; col < paper.cols && placed < numCopies; col++) {
+  for (let row = 0; row < paper.rows && placed < printQueue.length; row++) {
+    for (let col = 0; col < paper.cols && placed < printQueue.length; col++) {
       const text = printQueue[placed];
-      const displayText = text.replace(/\n/g, '<br>');
+      const leftMm = paper.marginLeft + col * (paper.labelW + paper.gapH);
+      const topMm = paper.marginTop + row * (paper.labelH + paper.gapV);
 
-      const left = paper.marginLeft + col * (paper.labelW + paper.gapH);
-      const top = paper.marginTop + row * (paper.labelH + paper.gapV);
+      // Convert to canvas pixels
+      const x = mmToPx(leftMm) * DPI;
+      const y = mmToPx(topMm) * DPI;
+      const w = mmToPx(paper.labelW) * DPI;
+      const h = mmToPx(paper.labelH) * DPI;
 
       // Auto-fit font size
       const fittedSize = autoFitFontSize(text, paper.labelW, paper.labelH, fFamily, lb.bold, paper.baseFontPt, paper.minFontPt);
-      // If original label has a size that fits, prefer it
       const origSize = lb.size || paper.baseFontPt;
       const origMeasure = measureText(text, fFamily, origSize, lb.bold);
       const maxWpx = mmToPx(paper.labelW - 2);
       const maxHpx = mmToPx(paper.labelH - 2);
       const useSize = (origMeasure.width <= maxWpx && origMeasure.height <= maxHpx) ? origSize : fittedSize;
 
-      const div = document.createElement('div');
-      div.className = 'sheet-label';
-      div.style.cssText =
-        'left:' + left + 'mm;top:' + top + 'mm;width:' + paper.labelW + 'mm;height:' + paper.labelH + 'mm;' +
-        'border-radius:' + paper.radius + 'mm;' +
-        'color:' + textColor + ';font-family:' + fFamily + ';font-size:' + useSize + 'pt;' +
-        (lb.bold ? 'font-weight:bold;' : '') +
-        'line-height:1.25;';
-      if (lb.image) {
-        div.style.flexDirection = 'column';
-        const img = document.createElement('img');
-        img.src = lb.image;
-        img.style.cssText = 'max-width:' + (paper.labelW - 2) + 'mm;max-height:' + (paper.labelH - 2) + 'mm;object-fit:contain;';
-        if (displayText && displayText.replace(/<br>/g,'').trim()) {
-          img.style.maxHeight = (paper.labelH * 0.65) + 'mm';
-          div.innerHTML = '';
-          div.appendChild(img);
-          const txt = document.createElement('div');
-          txt.style.cssText = 'font-size:' + (useSize * 0.7) + 'pt;line-height:1.2;';
-          txt.innerHTML = displayText;
-          div.appendChild(txt);
-        } else {
-          div.innerHTML = '';
-          div.appendChild(img);
-        }
-      } else {
-        div.innerHTML = displayText;
+      const fontSizePx = useSize * 1.333 * DPI;
+      ctx.font = (lb.bold ? 'bold ' : '') + fontSizePx + 'px ' + fFamily;
+      ctx.fillStyle = textColor;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Draw text with stroke for bolder appearance
+      ctx.strokeStyle = textColor;
+      ctx.lineWidth = 0.4 * DPI;
+      ctx.lineJoin = 'round';
+
+      const lines = text.split('\n');
+      const lineH = fontSizePx * 1.3;
+      const totalH = lines.length * lineH;
+      const startY = y + (h - totalH) / 2 + lineH / 2;
+      const centerX = x + w / 2;
+
+      for (let li = 0; li < lines.length; li++) {
+        const ly = startY + li * lineH;
+        ctx.strokeText(lines[li], centerX, ly);
+        ctx.fillText(lines[li], centerX, ly);
       }
-      sheet.appendChild(div);
+
       placed++;
     }
   }
 
-  closePrintModal();
-  setTimeout(() => window.print(), 200);
+  // Convert canvas to PDF
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const imgData = canvas.toDataURL('image/png');
+  pdf.addImage(imgData, 'PNG', 0, 0, A4W, A4H, undefined, 'FAST');
+
+  // Open PDF for printing
+  const blobUrl = pdf.output('bloburl');
+  window.open(blobUrl, '_blank');
 }
 
 // ━━━━━━━━━━ NEW / EDIT LABEL MODAL ━━━━━━━━━━
