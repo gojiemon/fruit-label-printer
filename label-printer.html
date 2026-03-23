@@ -1199,10 +1199,11 @@ let longPressTimer = null;
 const STORAGE_KEY = 'woodberries-custom-labels';
 const OVERRIDE_KEY = 'woodberries-label-overrides';
 const GAS_URL_KEY = 'woodberries-gas-url';
+const GAS_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbwukLz8Q3lBfm3FwTfEDrHmYpJaM0owxQKaVGPuceYFy-4vfZGxBWnXKzipOCsVKDnE/exec';
 
 // ── Google Apps Script Sync ──
 function getGasUrl() {
-  return localStorage.getItem(GAS_URL_KEY) || '';
+  return localStorage.getItem(GAS_URL_KEY) || GAS_URL_DEFAULT;
 }
 
 async function fetchSharedData() {
