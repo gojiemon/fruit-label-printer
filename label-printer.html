@@ -863,7 +863,7 @@ const LABELS=[
   {path:"サンド用　ロゴシール",code:"63295",texts:["ウッドベリーズ\nフルーツ\nヨーグルトサンド"],font:"コーポレートやわ明 Medium",size:6.4,color:0,border:true,borderColor:0,bold:false},
   {path:"ジャム/やまね園　ジャム　大",code:"63295",texts:["ウルトララズベリー\n1400 yen","ブラックベリー\n850 yen","ポポー\n900 yen","山桃\n1300 yen","白いちじく＆赤ワイン\n1100 yen","白いちじく（バナーネ）\n850 yen"],font:"コーポレートやわ明 Medium",size:9.9,color:0,border:true,borderColor:0,bold:false},
   {path:"ジャム/やまね園　ジャム　大2",code:"63295",texts:["いちじく\n（ブリジャソットグリーズ）\n1150 yen","ウルトララズベリー\n1600 yen","フェイジョア\n850 yen","ブラックベリー\n1400 yen","ポポー\n1100 yen","ミニキウイ(サルナシ）\n850 yen","山桃\n1500 yen","白いちじく＆赤ワイン\n1200 yen","白いちじく（バナーネ）\n1100 yen","黒いちじく\n（ビオレソリエス）\n1450 yen"],font:"コーポレートやわ明 Medium",size:7.2,color:0,border:true,borderColor:0,bold:false},
-  {path:"ドライアイス注意",code:"28916",texts:["ドライアイスが\n直接入って\nいますので\nご注意ください"],font:"コーポレートやわ明 Medium",size:17.76,color:0,border:false,borderColor:0,bold:false},
+  {path:"ドライアイス注意",code:"28916",texts:[],font:"コーポレートやわ明 Medium",size:17.76,color:0,border:false,borderColor:0,bold:false,image:"dry-ice-warning.png"},
   {path:"ハーフバット用　注意",code:"62312",texts:["切り分けの際は\n冷凍庫から出し、少し置いた後に\n透明のフィルムの両端を持って\n引っ張り上げ全体を\n取り出して下さい。"],font:"コーポレートやわ明 Medium",size:10.5,color:0,border:false,borderColor:0,bold:false},
   {path:"季節もの/いちごづくし",code:"73200",texts:["Wいちご","いちご ラズベリー\nブルーベリー","いちご\nマスカルポーネ","いちごカシス","いちごバナナ","いちご生姜","こたつファーム\n津の輝（柑橘)"],font:"コーポレートやわ明 Medium",size:6.1,color:0,border:false,borderColor:0,bold:false},
   {path:"果物シール　大/kenchan farmブルーベリー",code:"63295",texts:["武蔵野市\nKenchanFarm\nブルーベリー"],font:"コーポレートやわ明 Medium",size:8.83,color:0,border:true,borderColor:0,bold:false},
@@ -1698,7 +1698,16 @@ ensureFontLoaded();
 // Render labels on a Canvas, embed the JPEG image into a hand-built PDF.
 // The Canvas API uses the device's system fonts, so Japanese text is never garbled.
 
-function renderLabelsToCanvas(lb, paper, printQueue) {
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('画像読み込み失敗: ' + src));
+    img.src = src;
+  });
+}
+
+async function renderLabelsToCanvas(lb, paper, printQueue) {
   const DPI = 4;  // higher DPI for sharper text
   const A4W = 210, A4H = 297;
   const cW = Math.round(mmToPx(A4W) * DPI);
@@ -1714,6 +1723,12 @@ function renderLabelsToCanvas(lb, paper, printQueue) {
   const textColor = decToHex(lb.color);
   const fFamily = fontStack(lb.font);
 
+  // Pre-load image if label has one
+  let labelImg = null;
+  if (lb.image) {
+    try { labelImg = await loadImage(lb.image); } catch(e) { console.warn(e); }
+  }
+
   let placed = 0;
   for (let row = 0; row < paper.rows && placed < printQueue.length; row++) {
     for (let col = 0; col < paper.cols && placed < printQueue.length; col++) {
@@ -1723,31 +1738,43 @@ function renderLabelsToCanvas(lb, paper, printQueue) {
       const w = mmToPx(paper.labelW) * DPI;
       const h = mmToPx(paper.labelH) * DPI;
 
-      const fittedSize = autoFitFontSize(text, paper.labelW, paper.labelH, fFamily, lb.bold, paper.baseFontPt, paper.minFontPt);
-      const origSize = lb.size || paper.baseFontPt;
-      const origM = measureText(text, fFamily, origSize, lb.bold);
-      const maxWpx = mmToPx(paper.labelW - 2);
-      const maxHpx = mmToPx(paper.labelH - 2);
-      const useSize = (origM.width <= maxWpx && origM.height <= maxHpx) ? origSize : fittedSize;
-      const fPx = useSize * 1.333 * DPI;
+      if (labelImg) {
+        // Draw image fitted to label area
+        const imgRatio = labelImg.width / labelImg.height;
+        const boxRatio = w / h;
+        let dw, dh;
+        if (imgRatio > boxRatio) { dw = w; dh = w / imgRatio; }
+        else { dh = h; dw = h * imgRatio; }
+        const dx = x + (w - dw) / 2;
+        const dy = y + (h - dh) / 2;
+        ctx.drawImage(labelImg, dx, dy, dw, dh);
+      } else {
+        const fittedSize = autoFitFontSize(text, paper.labelW, paper.labelH, fFamily, lb.bold, paper.baseFontPt, paper.minFontPt);
+        const origSize = lb.size || paper.baseFontPt;
+        const origM = measureText(text, fFamily, origSize, lb.bold);
+        const maxWpx = mmToPx(paper.labelW - 2);
+        const maxHpx = mmToPx(paper.labelH - 2);
+        const useSize = (origM.width <= maxWpx && origM.height <= maxHpx) ? origSize : fittedSize;
+        const fPx = useSize * 1.333 * DPI;
 
-      ctx.font = (lb.bold ? 'bold ' : '') + fPx + 'px ' + fFamily;
-      ctx.fillStyle = textColor;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.strokeStyle = textColor;
-      ctx.lineWidth = 0.8 * DPI;
-      ctx.lineJoin = 'round';
+        ctx.font = (lb.bold ? 'bold ' : '') + fPx + 'px ' + fFamily;
+        ctx.fillStyle = textColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = textColor;
+        ctx.lineWidth = 0.8 * DPI;
+        ctx.lineJoin = 'round';
 
-      const lines = text.split('\n');
-      const lineH = fPx * 1.3;
-      const totalH = lines.length * lineH;
-      const startY = y + (h - totalH) / 2 + lineH / 2;
-      const centerX = x + w / 2;
-      for (let li = 0; li < lines.length; li++) {
-        const ly = startY + li * lineH;
-        ctx.strokeText(lines[li], centerX, ly);
-        ctx.fillText(lines[li], centerX, ly);
+        const lines = text.split('\n');
+        const lineH = fPx * 1.3;
+        const totalH = lines.length * lineH;
+        const startY = y + (h - totalH) / 2 + lineH / 2;
+        const centerX = x + w / 2;
+        for (let li = 0; li < lines.length; li++) {
+          const ly = startY + li * lineH;
+          ctx.strokeText(lines[li], centerX, ly);
+          ctx.fillText(lines[li], centerX, ly);
+        }
       }
       placed++;
     }
@@ -1833,7 +1860,7 @@ function doPrint() {
     }
   } else {
     const numCopies = Math.min(parseInt(document.getElementById('pm-count').value) || paper.total, paper.total);
-    const text = lb.texts[0] || '';
+    const text = lb.texts[0] || (lb.image ? '' : '');
     for (let j = 0; j < numCopies; j++) printQueue.push(text);
   }
 
@@ -1851,10 +1878,10 @@ function doPrint() {
   });
 }
 
-function generatePDF(lb, paper, printQueue) {
+async function generatePDF(lb, paper, printQueue) {
   try {
     // 1. Render labels on Canvas (uses system fonts → no garbled text)
-    const canvas = renderLabelsToCanvas(lb, paper, printQueue);
+    const canvas = await renderLabelsToCanvas(lb, paper, printQueue);
 
     // 2. Convert canvas to high-quality JPEG (0.99 = virtually lossless, pure white bg)
     canvas.toBlob(function(jpegBlob) {
