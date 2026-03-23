@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ウッドベリーズ ラベル印刷</title>
 <style>
+@font-face {
+  font-family: "コーポレートやわ明 Medium";
+  src: url("Corporate-Yawamin-ver3.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -1832,7 +1839,13 @@ function doPrint() {
   printBtn.textContent = 'PDF作成中...';
   document.getElementById('pdf-result').style.display = 'none';
 
-  setTimeout(() => { generatePDF(lb, paper, printQueue); }, 50);
+  // Wait for web font to be loaded before canvas rendering
+  document.fonts.load('12px "コーポレートやわ明 Medium"').then(() => {
+    setTimeout(() => { generatePDF(lb, paper, printQueue); }, 50);
+  }).catch(() => {
+    // Font load failed, proceed anyway with fallback font
+    setTimeout(() => { generatePDF(lb, paper, printQueue); }, 50);
+  });
 }
 
 function generatePDF(lb, paper, printQueue) {
