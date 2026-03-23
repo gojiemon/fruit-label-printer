@@ -1652,21 +1652,27 @@ let _fontLoaded = false;
 function ensureFontLoaded() {
   if (_fontLoaded) return Promise.resolve();
   return new Promise(resolve => {
+    const timeout = setTimeout(() => { _fontLoaded = true; resolve(); }, 3000);
     try {
       const face = new FontFace(
         'コーポレートやわ明 Medium',
         'url(Corporate-Yawamin-ver3.otf)'
       );
       face.load().then(loaded => {
+        clearTimeout(timeout);
         document.fonts.add(loaded);
         _fontLoaded = true;
         resolve();
       }).catch(err => {
+        clearTimeout(timeout);
         console.warn('Font load failed:', err);
-        resolve(); // proceed with fallback
+        _fontLoaded = true;
+        resolve();
       });
     } catch(e) {
+      clearTimeout(timeout);
       console.warn('FontFace API not supported:', e);
+      _fontLoaded = true;
       resolve();
     }
   });
@@ -1826,6 +1832,8 @@ function doPrint() {
 
   // Explicitly load web font via FontFace API, then render
   ensureFontLoaded().then(() => {
+    setTimeout(() => { generatePDF(lb, paper, printQueue); }, 100);
+  }).catch(() => {
     setTimeout(() => { generatePDF(lb, paper, printQueue); }, 100);
   });
 }
