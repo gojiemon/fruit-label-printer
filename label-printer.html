@@ -1429,9 +1429,8 @@ function renderGrid() {
     btn.className = 'label-btn ' + (isLarge ? 'label-btn-large' : 'label-btn-small');
 
     const textColor = decToHex(lb.color);
-    const borderColor = lb.border ? decToHex(lb.borderColor) : '#e0e0e0';
 
-    btn.style.border = '1.5px solid ' + borderColor;
+    btn.style.border = '1.5px solid ' + (textColor !== '#000000' ? textColor : '#9ca3af');
     btn.style.color = textColor;
 
     const firstText = lb.texts[0] || '';
