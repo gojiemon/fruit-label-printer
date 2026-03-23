@@ -1682,142 +1682,143 @@ function updateTotalInfo() {
   }
 }
 
-// ━━━━━━━━━━ PRINT (PDF Generation — no external libraries) ━━━━━━━━━━
-function mmToPt(mm) { return mm * 72 / 25.4; }
+// ━━━━━━━━━━ PRINT (Canvas → JPEG → PDF, no external libs) ━━━━━━━━━━
 
-// Estimate text width in pt (CJK = full-width, ASCII ≈ half)
-function estimateTextWidthPt(text, fontSizePt) {
-  let w = 0;
-  for (let i = 0; i < text.length; i++) {
-    const c = text.charCodeAt(i);
-    w += (c > 0x7F) ? fontSizePt : fontSizePt * 0.55;
-  }
-  return w;
-}
+// Render labels on a Canvas, embed the JPEG image into a hand-built PDF.
+// The Canvas API uses the device's system fonts, so Japanese text is never garbled.
 
-// UTF-16BE hex string for PDF
-function utf16beHex(str) {
-  let hex = 'FEFF';
-  for (let i = 0; i < str.length; i++) {
-    hex += ('0000' + str.charCodeAt(i).toString(16).toUpperCase()).slice(-4);
-  }
-  return '<' + hex + '>';
-}
+function renderLabelsToCanvas(lb, paper, printQueue) {
+  const DPI = 3;
+  const A4W = 210, A4H = 297;
+  const cW = Math.round(mmToPx(A4W) * DPI);
+  const cH = Math.round(mmToPx(A4H) * DPI);
 
-// Parse hex color to PDF rgb values (0-1)
-function hexToRgb01(hex) {
-  if (!hex || hex === '#000000') return '0 0 0';
-  const h = hex.replace('#', '');
-  const r = parseInt(h.substring(0, 2), 16) / 255;
-  const g = parseInt(h.substring(2, 4), 16) / 255;
-  const b = parseInt(h.substring(4, 6), 16) / 255;
-  return r.toFixed(3) + ' ' + g.toFixed(3) + ' ' + b.toFixed(3);
-}
+  const canvas = document.createElement('canvas');
+  canvas.width = cW;
+  canvas.height = cH;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, cW, cH);
 
-// Build a complete PDF file as a Blob (no external libraries)
-function buildPDFBlob(labelItems) {
-  // labelItems = [{ text, xMm, yMm, wMm, hMm, fontSizePt, colorHex, bold }]
-  const A4W = mmToPt(210), A4H = mmToPt(297);
-  const objects = [];
-  function addObj(content) { objects.push(content); return objects.length; }
+  const textColor = decToHex(lb.color);
+  const fFamily = '"Yu Mincho","YuMincho","Hiragino Mincho ProN","Hiragino Sans","Noto Sans JP","MS PMincho",serif';
 
-  // Font objects — CIDFont + Type0 for Japanese
-  const cidMincho = addObj(
-    '<< /Type /Font /Subtype /CIDFontType0\n' +
-    '   /BaseFont /KozMinPr6N-Regular\n' +
-    '   /CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 6 >>\n' +
-    '   /DW 1000 >>'
-  );
-  const fontMincho = addObj(
-    '<< /Type /Font /Subtype /Type0\n' +
-    '   /BaseFont /KozMinPr6N-Regular\n' +
-    '   /Encoding /Identity-H\n' +
-    '   /DescendantFonts [' + cidMincho + ' 0 R] >>'
-  );
-  const cidGothic = addObj(
-    '<< /Type /Font /Subtype /CIDFontType0\n' +
-    '   /BaseFont /KozGoPr6N-Medium\n' +
-    '   /CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 6 >>\n' +
-    '   /DW 1000 >>'
-  );
-  const fontGothic = addObj(
-    '<< /Type /Font /Subtype /Type0\n' +
-    '   /BaseFont /KozGoPr6N-Medium\n' +
-    '   /Encoding /Identity-H\n' +
-    '   /DescendantFonts [' + cidGothic + ' 0 R] >>'
-  );
+  let placed = 0;
+  for (let row = 0; row < paper.rows && placed < printQueue.length; row++) {
+    for (let col = 0; col < paper.cols && placed < printQueue.length; col++) {
+      const text = printQueue[placed];
+      const x = mmToPx(paper.marginLeft + col * (paper.labelW + paper.gapH)) * DPI;
+      const y = mmToPx(paper.marginTop + row * (paper.labelH + paper.gapV)) * DPI;
+      const w = mmToPx(paper.labelW) * DPI;
+      const h = mmToPx(paper.labelH) * DPI;
 
-  // Build content stream — draw each label
-  let stream = '';
-  for (const item of labelItems) {
-    const lines = item.text.split('\n');
-    const fs = item.fontSizePt;
-    const lineH = fs * 1.3;
-    const totalH = lines.length * lineH;
-    const rgb = hexToRgb01(item.colorHex);
-    const fontRef = item.bold ? '/F2' : '/F1';
+      const fittedSize = autoFitFontSize(text, paper.labelW, paper.labelH, fFamily, lb.bold, paper.baseFontPt, paper.minFontPt);
+      const origSize = lb.size || paper.baseFontPt;
+      const origM = measureText(text, fFamily, origSize, lb.bold);
+      const maxWpx = mmToPx(paper.labelW - 2);
+      const maxHpx = mmToPx(paper.labelH - 2);
+      const useSize = (origM.width <= maxWpx && origM.height <= maxHpx) ? origSize : fittedSize;
+      const fPx = useSize * 1.333 * DPI;
 
-    // Vertical center within the label cell
-    const cellCenterY = item.yMm + item.hMm / 2;
-    const blockTopMm = cellCenterY - (totalH / mmToPt(1)) / 2;
+      ctx.font = (lb.bold ? 'bold ' : '') + fPx + 'px ' + fFamily;
+      ctx.fillStyle = textColor;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = textColor;
+      ctx.lineWidth = 0.4 * DPI;
+      ctx.lineJoin = 'round';
 
-    // Stroke for bolder text
-    stream += rgb + ' rg ' + rgb + ' RG\n';
-    stream += '2 Tr 0.3 w\n'; // stroke+fill mode, thin stroke
-
-    for (let li = 0; li < lines.length; li++) {
-      const line = lines[li].trim();
-      if (!line) continue;
-      // Horizontal center
-      const textW = estimateTextWidthPt(line, fs);
-      const cellCenterX = item.xMm + item.wMm / 2;
-      const pdfX = mmToPt(cellCenterX) - textW / 2;
-      const lineMm = blockTopMm + (li * lineH + lineH * 0.75) / mmToPt(1);
-      const pdfY = A4H - mmToPt(lineMm);
-
-      stream += 'BT ' + fontRef + ' ' + fs.toFixed(1) + ' Tf ';
-      stream += pdfX.toFixed(2) + ' ' + pdfY.toFixed(2) + ' Td ';
-      stream += utf16beHex(line) + ' Tj ET\n';
+      const lines = text.split('\n');
+      const lineH = fPx * 1.3;
+      const totalH = lines.length * lineH;
+      const startY = y + (h - totalH) / 2 + lineH / 2;
+      const centerX = x + w / 2;
+      for (let li = 0; li < lines.length; li++) {
+        const ly = startY + li * lineH;
+        ctx.strokeText(lines[li], centerX, ly);
+        ctx.fillText(lines[li], centerX, ly);
+      }
+      placed++;
     }
-    stream += '0 Tr\n'; // reset render mode
   }
+  return canvas;
+}
 
-  const streamBytes = new TextEncoder().encode(stream);
+// Build a minimal PDF containing a single full-page JPEG image
+function buildImagePDF(jpegBytes, imgW, imgH) {
+  const A4W = (210 * 72 / 25.4).toFixed(2);
+  const A4H = (297 * 72 / 25.4).toFixed(2);
+
+  const objects = [];
+  function addObj(data) { objects.push(data); return objects.length; }
+
+  // 1: Image XObject (JPEG)
+  const imgObj = addObj(null); // placeholder, filled with binary
+  // 2: Page content stream
+  const drawCmd = 'q ' + A4W + ' 0 0 ' + A4H + ' 0 0 cm /Img1 Do Q';
   const contentObj = addObj(
-    '<< /Length ' + streamBytes.length + ' >>\nstream\n' + stream + 'endstream'
+    '<< /Length ' + drawCmd.length + ' >>\nstream\n' + drawCmd + '\nendstream'
   );
-  const resources = addObj(
-    '<< /Font << /F1 ' + fontMincho + ' 0 R /F2 ' + fontGothic + ' 0 R >> >>'
+  // 3: Resources
+  const resObj = addObj(
+    '<< /XObject << /Img1 ' + imgObj + ' 0 R >> >>'
   );
-  const page = addObj(
-    '<< /Type /Page /Parent PAGES_REF\n' +
-    '   /MediaBox [0 0 ' + A4W.toFixed(2) + ' ' + A4H.toFixed(2) + ']\n' +
-    '   /Contents ' + contentObj + ' 0 R /Resources ' + resources + ' 0 R >>'
+  // 4: Page
+  const pageObj = addObj(
+    '<< /Type /Page /Parent PAGES_REF /MediaBox [0 0 ' + A4W + ' ' + A4H + ']\n' +
+    '   /Contents ' + contentObj + ' 0 R /Resources ' + resObj + ' 0 R >>'
   );
-  const pages = addObj(
-    '<< /Type /Pages /Kids [' + page + ' 0 R] /Count 1 >>'
+  // 5: Pages
+  const pagesObj = addObj(
+    '<< /Type /Pages /Kids [' + pageObj + ' 0 R] /Count 1 >>'
   );
-  objects[page - 1] = objects[page - 1].replace('PAGES_REF', pages + ' 0 R');
-  const catalog = addObj('<< /Type /Catalog /Pages ' + pages + ' 0 R >>');
+  objects[pageObj - 1] = objects[pageObj - 1].replace('PAGES_REF', pagesObj + ' 0 R');
+  // 6: Catalog
+  const catObj = addObj('<< /Type /Catalog /Pages ' + pagesObj + ' 0 R >>');
 
-  // Serialize PDF
-  let pdf = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
+  // Build image object header
+  const imgHeader =
+    '<< /Type /XObject /Subtype /Image /Width ' + imgW + ' /Height ' + imgH +
+    ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpegBytes.length + ' >>\nstream\n';
+  const imgFooter = '\nendstream';
+
+  // Serialize PDF with binary image
+  const enc = new TextEncoder();
+  const parts = [];
+  let offset = 0;
+
+  function writeStr(s) { const b = enc.encode(s); parts.push(b); offset += b.length; }
+
+  writeStr('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+
   const offsets = [];
   for (let i = 0; i < objects.length; i++) {
-    offsets.push(pdf.length);
-    pdf += (i + 1) + ' 0 obj\n' + objects[i] + '\nendobj\n';
+    offsets.push(offset);
+    if (i === imgObj - 1) {
+      // Image object — binary stream
+      writeStr((i + 1) + ' 0 obj\n' + imgHeader);
+      parts.push(jpegBytes); offset += jpegBytes.length;
+      writeStr(imgFooter + '\nendobj\n');
+    } else {
+      writeStr((i + 1) + ' 0 obj\n' + objects[i] + '\nendobj\n');
+    }
   }
-  const xrefOff = pdf.length;
-  pdf += 'xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n';
-  for (const off of offsets) {
-    pdf += ('0000000000' + off).slice(-10) + ' 00000 n \n';
-  }
-  pdf += 'trailer\n<< /Size ' + (objects.length + 1) + ' /Root ' + catalog + ' 0 R >>\n';
-  pdf += 'startxref\n' + xrefOff + '\n%%EOF';
 
-  const bytes = new Uint8Array(pdf.length);
-  for (let i = 0; i < pdf.length; i++) bytes[i] = pdf.charCodeAt(i) & 0xFF;
-  return new Blob([bytes], { type: 'application/pdf' });
+  const xrefOff = offset;
+  writeStr('xref\n0 ' + (objects.length + 1) + '\n0000000000 65535 f \n');
+  for (const off of offsets) {
+    writeStr(('0000000000' + off).slice(-10) + ' 00000 n \n');
+  }
+  writeStr('trailer\n<< /Size ' + (objects.length + 1) + ' /Root ' + catObj + ' 0 R >>\n');
+  writeStr('startxref\n' + xrefOff + '\n%%EOF');
+
+  // Merge all parts into single Uint8Array
+  const totalLen = parts.reduce((a, b) => a + b.length, 0);
+  const result = new Uint8Array(totalLen);
+  let pos = 0;
+  for (const p of parts) { result.set(p, pos); pos += p.length; }
+
+  return new Blob([result], { type: 'application/pdf' });
 }
 
 function doPrint() {
@@ -1855,50 +1856,35 @@ function doPrint() {
 
 function generatePDF(lb, paper, printQueue) {
   try {
-    const textColor = decToHex(lb.color);
-    const fFamily = fontStack(lb.font);
+    // 1. Render labels on Canvas (uses system fonts → no garbled text)
+    const canvas = renderLabelsToCanvas(lb, paper, printQueue);
 
-    // Build label items for PDF
-    const labelItems = [];
-    let placed = 0;
-    for (let row = 0; row < paper.rows && placed < printQueue.length; row++) {
-      for (let col = 0; col < paper.cols && placed < printQueue.length; col++) {
-        const text = printQueue[placed];
-        const leftMm = paper.marginLeft + col * (paper.labelW + paper.gapH);
-        const topMm = paper.marginTop + row * (paper.labelH + paper.gapV);
-
-        // Auto-fit font size
-        const fittedSize = autoFitFontSize(text, paper.labelW, paper.labelH, fFamily, lb.bold, paper.baseFontPt, paper.minFontPt);
-        const origSize = lb.size || paper.baseFontPt;
-        const origMeasure = measureText(text, fFamily, origSize, lb.bold);
-        const maxWpx = mmToPx(paper.labelW - 2);
-        const maxHpx = mmToPx(paper.labelH - 2);
-        const useSize = (origMeasure.width <= maxWpx && origMeasure.height <= maxHpx) ? origSize : fittedSize;
-
-        labelItems.push({
-          text: text,
-          xMm: leftMm,
-          yMm: topMm,
-          wMm: paper.labelW,
-          hMm: paper.labelH,
-          fontSizePt: useSize,
-          colorHex: textColor,
-          bold: lb.bold
-        });
-        placed++;
+    // 2. Convert canvas to JPEG blob
+    canvas.toBlob(function(jpegBlob) {
+      if (!jpegBlob) {
+        alert('画像の生成に失敗しました');
+        document.getElementById('pm-print').disabled = false;
+        document.getElementById('pm-print').textContent = 'PDF作成 → 印刷';
+        return;
       }
-    }
 
-    // Generate PDF
-    const blob = buildPDFBlob(labelItems);
-    const blobUrl = URL.createObjectURL(blob);
-    const link = document.getElementById('pdf-download-link');
-    if (link._blobUrl) URL.revokeObjectURL(link._blobUrl);
-    link.href = blobUrl;
-    link._blobUrl = blobUrl;
-    document.getElementById('pdf-result').style.display = 'block';
-    document.getElementById('pm-print').textContent = '✓ 作成完了';
-    document.getElementById('pdf-result').scrollIntoView({ behavior: 'smooth' });
+      const reader = new FileReader();
+      reader.onload = function() {
+        // 3. Embed JPEG in a hand-built PDF
+        const jpegBytes = new Uint8Array(reader.result);
+        const blob = buildImagePDF(jpegBytes, canvas.width, canvas.height);
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.getElementById('pdf-download-link');
+        if (link._blobUrl) URL.revokeObjectURL(link._blobUrl);
+        link.href = blobUrl;
+        link._blobUrl = blobUrl;
+        document.getElementById('pdf-result').style.display = 'block';
+        document.getElementById('pm-print').textContent = '✓ 作成完了';
+        document.getElementById('pdf-result').scrollIntoView({ behavior: 'smooth' });
+      };
+      reader.readAsArrayBuffer(jpegBlob);
+
+    }, 'image/jpeg', 0.95);
 
   } catch(e) {
     alert('PDF作成に失敗しました: ' + e.message);
