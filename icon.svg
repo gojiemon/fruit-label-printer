@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f0fdf4"/>
+      <stop offset="100%" stop-color="#dcfce7"/>
+    </linearGradient>
+    <linearGradient id="berry" x1="0.3" y1="0" x2="0.7" y2="1">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="100%" stop-color="#16a34a"/>
+    </linearGradient>
+    <linearGradient id="label" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fffdf9"/>
+      <stop offset="100%" stop-color="#fef3c7"/>
+    </linearGradient>
+    <linearGradient id="labelEdge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#bg)" stroke="#16a34a" stroke-width="12"/>
+
+  <!-- Strawberry body -->
+  <ellipse cx="230" cy="280" rx="105" ry="130" fill="url(#berry)" transform="rotate(-5, 230, 280)"/>
+
+  <!-- Strawberry seeds -->
+  <g fill="#fca5a5" opacity="0.7">
+    <ellipse cx="195" cy="240" rx="5" ry="7" transform="rotate(-15, 195, 240)"/>
+    <ellipse cx="225" cy="225" rx="5" ry="7" transform="rotate(5, 225, 225)"/>
+    <ellipse cx="260" cy="235" rx="5" ry="7" transform="rotate(10, 260, 235)"/>
+    <ellipse cx="180" cy="280" rx="5" ry="7" transform="rotate(-10, 180, 280)"/>
+    <ellipse cx="215" cy="275" rx="5" ry="7" transform="rotate(0, 215, 275)"/>
+    <ellipse cx="250" cy="270" rx="5" ry="7" transform="rotate(8, 250, 270)"/>
+    <ellipse cx="195" cy="315" rx="5" ry="7" transform="rotate(-5, 195, 315)"/>
+    <ellipse cx="230" cy="310" rx="5" ry="7" transform="rotate(3, 230, 310)"/>
+    <ellipse cx="265" cy="305" rx="5" ry="7" transform="rotate(12, 265, 305)"/>
+    <ellipse cx="210" cy="350" rx="5" ry="7" transform="rotate(-3, 210, 350)"/>
+    <ellipse cx="245" cy="345" rx="5" ry="7" transform="rotate(6, 245, 345)"/>
+  </g>
+
+  <!-- Strawberry highlight -->
+  <ellipse cx="200" cy="250" rx="30" ry="50" fill="white" opacity="0.15" transform="rotate(-15, 200, 250)"/>
+
+  <!-- Leaves / calyx -->
+  <g transform="translate(230, 175) rotate(-5)">
+    <ellipse cx="-35" cy="-15" rx="28" ry="10" fill="url(#leaf)" transform="rotate(-40)"/>
+    <ellipse cx="0" cy="-25" rx="28" ry="10" fill="url(#leaf)" transform="rotate(-5)"/>
+    <ellipse cx="35" cy="-15" rx="28" ry="10" fill="url(#leaf)" transform="rotate(35)"/>
+    <ellipse cx="-18" cy="-22" rx="24" ry="9" fill="url(#leaf)" transform="rotate(-22)"/>
+    <ellipse cx="18" cy="-22" rx="24" ry="9" fill="url(#leaf)" transform="rotate(18)"/>
+  </g>
+
+  <!-- Stem -->
+  <rect x="225" y="130" width="8" height="30" rx="4" fill="#16a34a" transform="rotate(-5, 229, 145)"/>
+
+  <!-- Label / tag attached to strawberry -->
+  <g transform="translate(320, 160) rotate(12)">
+    <!-- Tag string -->
+    <path d="M-40,30 Q-25,15 -10,25" stroke="#d97706" stroke-width="3" fill="none"/>
+
+    <!-- Tag body -->
+    <rect x="-10" y="0" width="100" height="65" rx="8" fill="url(#label)" stroke="url(#labelEdge)" stroke-width="2.5"/>
+
+    <!-- Tag hole -->
+    <circle cx="2" cy="32" r="6" fill="none" stroke="#d97706" stroke-width="2"/>
+
+    <!-- Tag text lines (representing label content) -->
+    <rect x="18" y="14" width="55" height="5" rx="2" fill="#16a34a" opacity="0.7"/>
+    <rect x="18" y="25" width="70" height="4" rx="2" fill="#9ca3af" opacity="0.5"/>
+    <rect x="18" y="34" width="45" height="4" rx="2" fill="#9ca3af" opacity="0.5"/>
+    <rect x="18" y="43" width="60" height="4" rx="2" fill="#9ca3af" opacity="0.5"/>
+
+    <!-- Small barcode-like lines at bottom -->
+    <g transform="translate(25, 52)" opacity="0.4">
+      <rect x="0" y="0" width="2" height="8" fill="#374151"/>
+      <rect x="4" y="0" width="1" height="8" fill="#374151"/>
+      <rect x="7" y="0" width="3" height="8" fill="#374151"/>
+      <rect x="12" y="0" width="1" height="8" fill="#374151"/>
+      <rect x="15" y="0" width="2" height="8" fill="#374151"/>
+      <rect x="19" y="0" width="1" height="8" fill="#374151"/>
+      <rect x="22" y="0" width="3" height="8" fill="#374151"/>
+      <rect x="27" y="0" width="1" height="8" fill="#374151"/>
+      <rect x="30" y="0" width="2" height="8" fill="#374151"/>
+      <rect x="34" y="0" width="1" height="8" fill="#374151"/>
+      <rect x="37" y="0" width="2" height="8" fill="#374151"/>
+      <rect x="41" y="0" width="1" height="8" fill="#374151"/>
+    </g>
+  </g>
+
+  <!-- Small decorative blueberry cluster (bottom-left) -->
+  <g transform="translate(110, 390)">
+    <circle cx="0" cy="0" r="18" fill="#7c3aed" opacity="0.8"/>
+    <circle cx="20" cy="10" r="15" fill="#8b5cf6" opacity="0.7"/>
+    <circle cx="-5" cy="18" r="13" fill="#6d28d9" opacity="0.75"/>
+    <!-- tiny star on each berry -->
+    <circle cx="0" cy="-4" r="3" fill="#c4b5fd" opacity="0.5"/>
+    <circle cx="20" cy="6" r="2.5" fill="#c4b5fd" opacity="0.5"/>
+    <circle cx="-5" cy="14" r="2" fill="#c4b5fd" opacity="0.5"/>
+  </g>
+</svg>
