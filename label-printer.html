@@ -761,7 +761,23 @@ body {
     <div id="pdf-result" style="display:none;margin-top:16px;padding:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;text-align:center">
       <p style="font-size:14px;color:#166534;margin-bottom:12px;font-weight:600">✓ PDF作成完了</p>
       <a id="pdf-download-link" href="#" target="_blank" style="display:inline-block;padding:14px 32px;background:#16a34a;color:#fff;border-radius:8px;font-size:16px;font-weight:700;text-decoration:none">PDFを開いて印刷</a>
-      <p style="font-size:12px;color:#4b5563;margin-top:10px">開いたPDFを「実際のサイズ (100%)」で印刷してください</p>
+      <script>
+        (function(){
+          var isAndroid = /android/i.test(navigator.userAgent);
+          if (isAndroid) {
+            var a = document.getElementById('pdf-download-link');
+            a.removeAttribute('target');
+            a.setAttribute('download', 'label.pdf');
+            a.textContent = 'PDFをダウンロード';
+          }
+        })();
+      </script>
+      <p id="pdf-hint" style="font-size:12px;color:#4b5563;margin-top:10px">開いたPDFを「実際のサイズ (100%)」で印刷してください</p>
+      <script>
+        if (/android/i.test(navigator.userAgent)) {
+          document.getElementById('pdf-hint').textContent = 'ダウンロード後、PDFを開いて「実際のサイズ (100%)」で印刷してください';
+        }
+      </script>
     </div>
   </div>
 </div>
