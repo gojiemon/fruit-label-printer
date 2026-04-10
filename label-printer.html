@@ -767,15 +767,30 @@ body {
           if (isAndroid) {
             var a = document.getElementById('pdf-download-link');
             a.removeAttribute('target');
-            a.setAttribute('download', 'label.pdf');
-            a.textContent = 'PDFをダウンロード';
+            a.removeAttribute('href');
+            a.style.cursor = 'pointer';
+            a.textContent = 'PDFをダウンロード／共有';
+            a.addEventListener('click', function(e) {
+              e.preventDefault();
+              if (window._pdfBlob && navigator.canShare) {
+                var file = new File([window._pdfBlob], 'label.pdf', { type: 'application/pdf' });
+                if (navigator.canShare({ files: [file] })) {
+                  navigator.share({ files: [file], title: 'ラベルPDF' }).catch(function(){});
+                  return;
+                }
+              }
+              // フォールバック: Blob URLを新しいタブで開く
+              if (window._pdfBlobUrl) {
+                window.open(window._pdfBlobUrl, '_blank');
+              }
+            });
           }
         })();
       </script>
       <p id="pdf-hint" style="font-size:12px;color:#4b5563;margin-top:10px">開いたPDFを「実際のサイズ (100%)」で印刷してください</p>
       <script>
         if (/android/i.test(navigator.userAgent)) {
-          document.getElementById('pdf-hint').textContent = 'ダウンロード後、PDFを開いて「実際のサイズ (100%)」で印刷してください';
+          document.getElementById('pdf-hint').textContent = '共有メニューから「ファイルに保存」や印刷アプリに送れます';
         }
       </script>
     </div>
@@ -1651,6 +1666,8 @@ function closePrintModal() {
   // Revoke old blob URL
   const link = document.getElementById('pdf-download-link');
   if (link._blobUrl) { URL.revokeObjectURL(link._blobUrl); link._blobUrl = null; }
+  window._pdfBlob = null;
+  if (window._pdfBlobUrl) { URL.revokeObjectURL(window._pdfBlobUrl); window._pdfBlobUrl = null; }
   currentPrintLabel = null;
 }
 
@@ -1922,6 +1939,10 @@ async function generatePDF(lb, paper, printQueue) {
         const jpegBytes = new Uint8Array(reader.result);
         const blob = buildImagePDF(jpegBytes, canvas.width, canvas.height, 'jpeg');
         const blobUrl = URL.createObjectURL(blob);
+        // Android用: グローバルにBlob/URLを保持（Share APIで使用）
+        if (window._pdfBlobUrl) URL.revokeObjectURL(window._pdfBlobUrl);
+        window._pdfBlob = blob;
+        window._pdfBlobUrl = blobUrl;
         const link = document.getElementById('pdf-download-link');
         if (link._blobUrl) URL.revokeObjectURL(link._blobUrl);
         link.href = blobUrl;
